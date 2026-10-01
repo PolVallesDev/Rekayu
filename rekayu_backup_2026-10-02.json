@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat-clase",
+      "name": "Clase",
+      "color": "#3B82F6",
+      "isDefault": true
+    },
+    {
+      "id": "cat-examenes",
+      "name": "Exámenes",
+      "color": "#EF4444",
+      "isDefault": true
+    },
+    {
+      "id": "cat-emprendimiento",
+      "name": "Emprendimiento",
+      "color": "#8B5CF6",
+      "isDefault": true
+    },
+    {
+      "id": "cat-personal",
+      "name": "Personal",
+      "color": "#10B981",
+      "isDefault": true
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1790896303116",
+      "title": "test",
+      "description": "kkkk",
+      "dueDate": "2026-10-30",
+      "priority": "media",
+      "categoryId": "cat-clase",
+      "status": "pendiente",
+      "createdAt": "2026-10-01T23:11:43.116Z"
+    },
+    {
+      "id": "task-seed-1",
+      "title": "Entrega de propuesta MVP",
+      "description": "Definir propuesta de valor y landing page para el proyecto.",
+      "dueDate": "2026-10-02",
+      "priority": "alta",
+      "categoryId": "cat-examenes",
+      "status": "pendiente",
+      "createdAt": "2026-10-01T22:53:48.886Z"
+    },
+    {
+      "id": "task-seed-2",
+      "title": "Examen de Matemáticas / Finanzas",
+      "description": "Repasar temas 1 al 4 y ejercicios prácticos.",
+      "dueDate": "2026-10-04",
+      "priority": "alta",
+      "categoryId": "cat-examenes",
+      "status": "pendiente",
+      "createdAt": "2026-10-01T22:53:48.886Z"
+    },
+    {
+      "id": "task-seed-4",
+      "title": "Organizar apuntes de la semana",
+      "description": "Subir resúmenes al cuaderno digital.",
+      "dueDate": "2026-10-02",
+      "priority": "baja",
+      "categoryId": "cat-clase",
+      "status": "pendiente",
+      "createdAt": "2026-10-01T22:53:48.886Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-1790896577213",
+      "title": "Cosas que me gustaria que tubiera mi APP",
+      "content": "Mejorar Estetica\nQue sala en tareas Hoy - {Dia} ej: hoy - Lunes\nPersistencia con base de datos auth",
+      "createdAt": "2026-10-01T23:16:17.212Z",
+      "updatedAt": "2026-10-01T23:16:17.212Z",
+      "isPinned": true
+    },
+    {
+      "id": "note-seed-1",
+      "title": "Hipótesis del MVP de Rekayu",
+      "content": "1. Los estudiantes emprendedores necesitan ver plazos críticos sin sobrecarga visual.\n2. La separación clara entre tareas con fecha y anotaciones rápidas libera foco mental.\n3. Una interfaz minimalista y rápida aumenta la productividad diaria.",
+      "createdAt": "2026-10-01T23:08:44.796Z",
+      "updatedAt": "2026-10-01T23:08:44.796Z",
+      "isPinned": false
+    },
+    {
+      "id": "note-seed-2",
+      "title": "Fórmulas clave - Finanzas",
+      "content": "• Punto de equilibrio = Costes fijos / (Precio - Coste variable)\n• Margen de contribución = (Ventas - Costes variables) / Ventas\n• CAC = Gasto marketing / Nuevos clientes",
+      "createdAt": "2026-10-01T23:08:44.796Z",
+      "updatedAt": "2026-10-01T23:08:44.796Z",
+      "isPinned": false
+    }
+  ],
+  "reminders": [
+    {
+      "id": "rem-seed-1",
+      "title": "Revisar la agenda de la semana cada domingo por la tarde",
+      "isCompleted": false,
+      "createdAt": "2026-10-01T23:08:44.796Z"
+    },
+    {
+      "id": "rem-seed-2",
+      "title": "Enviar correo de seguimiento al mentor de la incubadora",
+      "isCompleted": true,
+      "createdAt": "2026-10-01T23:08:44.796Z"
+    }
+  ]
+}

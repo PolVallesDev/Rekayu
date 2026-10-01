@@ -1,0 +1,300 @@
+// Capa de persistencia centralizada (localStorage -> Supabase en el futuro)
+import { AppData, Category, Task, Note, Reminder } from '../types';
+import { getTodayString } from './dates';
+
+const STORAGE_KEY = 'rekayu_app_data_v1';
+
+// Categorías por defecto del sistema
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'cat-clase', name: 'Clase', color: '#3B82F6', isDefault: true },
+  { id: 'cat-examenes', name: 'Exámenes', color: '#EF4444', isDefault: true },
+  { id: 'cat-emprendimiento', name: 'Emprendimiento', color: '#8B5CF6', isDefault: true },
+  { id: 'cat-personal', name: 'Personal', color: '#10B981', isDefault: true },
+];
+
+// Semilla de tareas iniciales
+const getSeedTasks = (): Task[] => {
+  const today = getTodayString();
+  const d = new Date();
+
+  const examDate = new Date(d);
+  examDate.setDate(d.getDate() + 3);
+  const examDateStr = examDate.toISOString().split('T')[0];
+
+  const urgentDate = new Date(d);
+  urgentDate.setDate(d.getDate() + 1);
+  const urgentDateStr = urgentDate.toISOString().split('T')[0];
+
+  return [
+    {
+      id: 'task-seed-1',
+      title: 'Entrega de propuesta MVP',
+      description: 'Definir propuesta de valor y landing page para el proyecto.',
+      dueDate: urgentDateStr,
+      priority: 'alta',
+      categoryId: 'cat-examenes',
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-2',
+      title: 'Examen de Matemáticas / Finanzas',
+      description: 'Repasar temas 1 al 4 y ejercicios prácticos.',
+      dueDate: examDateStr,
+      priority: 'alta',
+      categoryId: 'cat-examenes',
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-3',
+      title: 'Reunión con primer cliente potencial',
+      description: 'Mostrar demo interactivo y recopilar feedback.',
+      dueDate: today,
+      priority: 'media',
+      categoryId: 'cat-emprendimiento',
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-4',
+      title: 'Organizar apuntes de la semana',
+      description: 'Subir resúmenes al cuaderno digital.',
+      dueDate: today,
+      priority: 'baja',
+      categoryId: 'cat-clase',
+      status: 'hecha',
+      createdAt: new Date().toISOString(),
+    },
+  ];
+};
+
+// Semilla de notas iniciales
+const getSeedNotes = (): Note[] => {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: 'note-seed-1',
+      title: 'Hipótesis del MVP de Rekayu',
+      content:
+        '1. Los estudiantes emprendedores necesitan ver plazos críticos sin sobrecarga visual.\n2. La separación clara entre tareas con fecha y anotaciones rápidas libera foco mental.\n3. Una interfaz minimalista y rápida aumenta la productividad diaria.',
+      createdAt: now,
+      updatedAt: now,
+      isPinned: true,
+    },
+    {
+      id: 'note-seed-2',
+      title: 'Fórmulas clave - Finanzas',
+      content:
+        '• Punto de equilibrio = Costes fijos / (Precio - Coste variable)\n• Margen de contribución = (Ventas - Costes variables) / Ventas\n• CAC = Gasto marketing / Nuevos clientes',
+      createdAt: now,
+      updatedAt: now,
+      isPinned: false,
+    },
+  ];
+};
+
+// Semilla de recordatorios iniciales
+const getSeedReminders = (): Reminder[] => {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: 'rem-seed-1',
+      title: 'Revisar la agenda de la semana cada domingo por la tarde',
+      isCompleted: false,
+      createdAt: now,
+    },
+    {
+      id: 'rem-seed-2',
+      title: 'Enviar correo de seguimiento al mentor de la incubadora',
+      isCompleted: true,
+      createdAt: now,
+    },
+  ];
+};
+
+/**
+ * Carga todo el estado de la aplicación desde la persistencia
+ */
+export const getAppData = (): AppData => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      const initialData: AppData = {
+        version: 1,
+        categories: DEFAULT_CATEGORIES,
+        tasks: getSeedTasks(),
+        notes: getSeedNotes(),
+        reminders: getSeedReminders(),
+      };
+      saveAppData(initialData);
+      return initialData;
+    }
+
+    const parsed: AppData = JSON.parse(raw);
+
+    // Validar integridad mínima y asegurar colecciones
+    if (!parsed.categories || !Array.isArray(parsed.categories)) {
+      parsed.categories = DEFAULT_CATEGORIES;
+    }
+    if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+      parsed.tasks = [];
+    }
+    if (!parsed.notes || !Array.isArray(parsed.notes)) {
+      parsed.notes = getSeedNotes();
+    }
+    if (!parsed.reminders || !Array.isArray(parsed.reminders)) {
+      parsed.reminders = getSeedReminders();
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error('Error al leer de localStorage:', error);
+    return {
+      version: 1,
+      categories: DEFAULT_CATEGORIES,
+      tasks: [],
+      notes: [],
+      reminders: [],
+    };
+  }
+};
+
+/**
+ * Guarda todo el estado de la aplicación en la persistencia
+ */
+export const saveAppData = (data: AppData): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('Error al guardar en localStorage:', error);
+  }
+};
+
+/**
+ * Tareas
+ */
+export const getTasks = (): Task[] => {
+  return getAppData().tasks;
+};
+
+export const saveTasks = (tasks: Task[]): void => {
+  const current = getAppData();
+  current.tasks = tasks;
+  saveAppData(current);
+};
+
+/**
+ * Categorías
+ */
+export const getCategories = (): Category[] => {
+  return getAppData().categories;
+};
+
+export const saveCategories = (categories: Category[]): void => {
+  const current = getAppData();
+  current.categories = categories;
+  saveAppData(current);
+};
+
+/**
+ * Notas / Anotaciones
+ */
+export const getNotes = (): Note[] => {
+  return getAppData().notes || [];
+};
+
+export const saveNotes = (notes: Note[]): void => {
+  const current = getAppData();
+  current.notes = notes;
+  saveAppData(current);
+};
+
+/**
+ * Recordatorios
+ */
+export const getReminders = (): Reminder[] => {
+  return getAppData().reminders || [];
+};
+
+export const saveReminders = (reminders: Reminder[]): void => {
+  const current = getAppData();
+  current.reminders = reminders;
+  saveAppData(current);
+};
+
+/**
+ * Exporta todos los datos en un archivo JSON descargable
+ */
+export const exportAppDataAsJSON = (): void => {
+  const data = getAppData();
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `rekayu_backup_${getTodayString()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Importa los datos desde un archivo JSON y los valida
+ */
+export const importAppDataFromJSON = async (
+  file: File
+): Promise<{ success: boolean; message: string; data?: AppData }> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+
+        if (!parsed || typeof parsed !== 'object') {
+          return resolve({
+            success: false,
+            message: 'El archivo JSON no tiene un formato válido.',
+          });
+        }
+
+        if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.categories)) {
+          return resolve({
+            success: false,
+            message: 'El archivo no contiene la estructura requerida (tasks y categories).',
+          });
+        }
+
+        const validData: AppData = {
+          version: parsed.version || 1,
+          tasks: parsed.tasks,
+          categories: parsed.categories,
+          notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+          reminders: Array.isArray(parsed.reminders) ? parsed.reminders : [],
+        };
+
+        saveAppData(validData);
+        resolve({
+          success: true,
+          message: `Se importaron ${validData.tasks.length} tareas, ${validData.categories.length} categorías, ${validData.notes?.length || 0} notas y ${validData.reminders?.length || 0} recordatorios.`,
+          data: validData,
+        });
+      } catch (err) {
+        resolve({
+          success: false,
+          message: 'Error al procesar el archivo JSON. Verifica que el archivo no esté corrupto.',
+        });
+      }
+    };
+
+    reader.onerror = () => {
+      resolve({ success: false, message: 'No se pudo leer el archivo seleccionado.' });
+    };
+
+    reader.readAsText(file);
+  });
+};
