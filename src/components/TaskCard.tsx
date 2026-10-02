@@ -1,7 +1,6 @@
 import React from 'react';
-import { Task, Category, Priority } from '../types';
-import { formatDateFriendly, isOverdue, isToday } from '../lib/dates';
-import { Check, Calendar } from 'lucide-react';
+import { Task, Category } from '../types';
+import { Check, Link as LinkIcon, Pin } from 'lucide-react';
 
 interface TaskCardProps {
   task: Task;
@@ -9,8 +8,9 @@ interface TaskCardProps {
   isSelected?: boolean;
   onSelect: (task: Task) => void;
   onToggle: (id: string) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -19,117 +19,109 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   isSelected,
   onSelect,
   onToggle,
+  onTogglePin,
 }) => {
   const isDone = task.status === 'hecha';
-  const taskOverdue = !isDone && isOverdue(task.dueDate);
-  const taskIsToday = !isDone && isToday(task.dueDate);
 
-  // Prioridades en diseño sobrio
-  const getPriorityDot = (priority: Priority) => {
-    switch (priority) {
-      case 'alta':
-        return 'text-rose-600 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900';
-      case 'media':
-        return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900';
-      case 'baja':
-      default:
-        return 'text-slate-500 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
-    }
-  };
+  // Subtareas completadas vs totales
+  const subtasksCount = task.subtasks?.length || 0;
+  const completedSubtasks = task.subtasks?.filter((s) => s.done).length || 0;
+  const hasLinks = (task.links?.length || 0) > 0;
 
   return (
     <div
       onClick={() => onSelect(task)}
-      className={`group relative p-3 rounded-xl border transition-all duration-150 cursor-pointer ${
+      className={`group relative flex items-center gap-3.5 px-3.5 py-3 rounded-2xl cursor-pointer transition-all duration-150 select-none border ${
         isSelected
-          ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-600 shadow-sm'
+          ? 'bg-calma-surface rounded-2xl shadow-calma border-calma-line/80'
           : isDone
-          ? 'bg-slate-50/50 border-slate-200/80 dark:bg-slate-900/30 dark:border-slate-800/60 opacity-60'
-          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+          ? 'opacity-70 hover:bg-calma-surface/50 border-transparent'
+          : 'hover:bg-calma-surface/60 border-transparent'
       }`}
     >
-      <div className="flex items-start gap-3">
-        {/* Checkbox minimalista (detiene la propagación para no reabrir/deseleccionar) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(task.id);
-          }}
-          className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded-md border flex items-center justify-center transition-all ${
-            isDone
-              ? 'bg-slate-700 border-slate-700 text-white dark:bg-slate-300 dark:border-slate-300 dark:text-slate-900'
-              : 'border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400'
+      {/* Botón Checkbox circular */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(task.id);
+        }}
+        className={`flex-none w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+          isDone
+            ? 'bg-calma-accent border-calma-accent text-white'
+            : 'border-calma-muted/70 hover:border-calma-accent text-transparent'
+        }`}
+        aria-label={isDone ? 'Marcar como pendiente' : 'Marcar como hecha'}
+      >
+        <Check className={`w-3.5 h-3.5 stroke-[2.8] ${isDone ? 'opacity-100' : 'opacity-0'}`} />
+      </button>
+
+      {/* Cuerpo de la tarea */}
+      <div className="flex-1 min-w-0">
+        <p
+          className={`text-[15.5px] leading-snug font-normal truncate m-0 ${
+            isDone ? 'line-through text-calma-muted' : 'text-calma-ink'
           }`}
-          aria-label={isDone ? 'Desmarcar tarea' : 'Completar tarea'}
         >
-          {isDone && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-        </button>
+          {task.title}
+        </p>
 
-        {/* Contenido principal */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h3
-              className={`text-sm font-medium leading-snug truncate ${
-                isDone
-                  ? 'line-through text-slate-400 dark:text-slate-500'
-                  : 'text-slate-900 dark:text-slate-100'
-              }`}
-            >
-              {task.title}
-            </h3>
-
-            {/* Prioridad sobria */}
-            <span
-              className={`flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${getPriorityDot(
-                task.priority
-              )}`}
-            >
-              {task.priority}
+        {/* Metadatos */}
+        <div className="flex items-center gap-2 text-calma-muted text-[13.5px] mt-0.5">
+          {category && (
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-2 h-2 rounded-full flex-none"
+                style={{ backgroundColor: category.color }}
+              />
+              <span>{category.name}</span>
             </span>
-          </div>
-
-          {/* Descripción corta */}
-          {task.description && (
-            <p
-              className={`text-xs mt-0.5 truncate ${
-                isDone
-                  ? 'line-through text-slate-400 dark:text-slate-600'
-                  : 'text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              {task.description}
-            </p>
           )}
 
-          {/* Metadatos (Categoría y Fecha) */}
-          <div className="flex items-center gap-2 mt-2 text-[11px]">
-            {category && (
-              <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: category.color }}
-                />
-                {category.name}
-              </span>
-            )}
+          {subtasksCount > 0 && (
+            <span className="inline-flex items-center text-xs ml-1 text-calma-muted/90 font-medium">
+              {completedSubtasks}/{subtasksCount}
+            </span>
+          )}
 
-            {task.dueDate && (
-              <span
-                className={`flex items-center gap-1 font-medium ${
-                  taskOverdue
-                    ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                    : taskIsToday
-                    ? 'text-amber-600 dark:text-amber-400 font-semibold'
-                    : 'text-slate-400 dark:text-slate-500'
-                }`}
-              >
-                <Calendar className="w-3 h-3" />
-                {formatDateFriendly(task.dueDate)}
-              </span>
-            )}
-          </div>
+          {hasLinks && (
+            <span className="inline-flex items-center ml-1 text-calma-muted/80" title="Contiene enlaces">
+              <LinkIcon className="w-3.5 h-3.5" />
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Hora opcional */}
+      {task.time && (
+        <span className="text-calma-muted text-[13.5px] font-normal flex-none">
+          {task.time}
+        </span>
+      )}
+
+      {/* Botón para fijar / pinear tarea */}
+      {onTogglePin && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin(task.id);
+          }}
+          className={`p-1.5 rounded-lg transition-all flex-none ${
+            task.isPinned
+              ? 'text-calma-accent opacity-100 bg-calma-accent-soft'
+              : 'text-calma-muted opacity-0 group-hover:opacity-100 hover:text-calma-ink hover:bg-calma-surface'
+          }`}
+          title={task.isPinned ? 'Desfijar tarea' : 'Fijar tarea'}
+        >
+          <Pin className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {/* Separador plano inferior (sin curvas extrañas), que desaparece al seleccionar */}
+      {!isSelected && (
+        <div className="absolute left-3.5 right-3.5 bottom-0 h-[1px] bg-calma-line/60 group-hover:opacity-0 transition-opacity pointer-events-none" />
+      )}
     </div>
   );
 };

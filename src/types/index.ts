@@ -11,14 +11,29 @@ export interface Category {
   isDefault?: boolean;
 }
 
+export interface Subtask {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TaskLink {
+  id: string;
+  url: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
   dueDate?: string; // Formato YYYY-MM-DD
+  time?: string; // Formato HH:mm ej. 18:00
   priority: Priority;
   categoryId: string;
   status: TaskStatus;
+  subtasks?: Subtask[];
+  links?: TaskLink[];
+  isPinned?: boolean;
   createdAt: string; // ISO string
 }
 
@@ -39,6 +54,7 @@ export interface Note {
 export interface Reminder {
   id: string;
   title: string;
+  notes?: string;
   dueDate?: string; // Formato YYYY-MM-DD
   dueTime?: string; // Formato HH:mm
   isCompleted: boolean;

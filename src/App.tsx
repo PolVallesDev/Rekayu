@@ -1,55 +1,66 @@
 import React, { useState, useMemo } from 'react';
-import { ViewType, SectionType, Task } from './types';
+import { ViewType, SectionType, Task, Reminder } from './types';
 import { useDarkMode } from './hooks/useDarkMode';
-import { useTasks, CreateTaskInput } from './hooks/useTasks';
+import { useTasks } from './hooks/useTasks';
 import { useCategories } from './hooks/useCategories';
 import { useNotes } from './hooks/useNotes';
 import { useReminders } from './hooks/useReminders';
-import { isOverdue, isToday, getDaysRemaining } from './lib/dates';
+import { isOverdue, isToday, getDaysRemaining, getTodayString } from './lib/dates';
 
-import { Sidebar } from './components/Sidebar';
+import { Header } from './components/Header';
 import { ExamsBanner } from './components/ExamsBanner';
 import { ViewTabs } from './components/ViewTabs';
 import { CategoryFilter } from './components/CategoryFilter';
 import { TaskList } from './components/TaskList';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
+import { ReminderDetailPanel } from './components/ReminderDetailPanel';
+import { PinnedTasksRail } from './components/PinnedTasksRail';
+import { AddBar } from './components/AddBar';
 import { RemindersSection } from './components/RemindersSection';
 import { NotesSection } from './components/NotesSection';
-import { TaskModal } from './components/TaskModal';
 import { CategoryModal } from './components/CategoryModal';
 import { DataBackupModal } from './components/DataBackupModal';
-import { Plus } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
-  const { tasks, addTask, updateTask, toggleTaskStatus, deleteTask, refreshTasks } = useTasks();
+  const {
+    tasks,
+    addTask,
+    updateTask,
+    toggleTaskStatus,
+    togglePinTask,
+    deleteTask,
+    refreshTasks,
+  } = useTasks();
   const { categories, addCategory, refreshCategories } = useCategories();
   const { notes, addNote, updateNote, togglePinNote, deleteNote, refreshNotes } = useNotes();
   const {
     reminders,
     addReminder,
+    updateReminder,
     toggleReminder,
     deleteReminder,
     refreshReminders,
   } = useReminders();
 
-  // Sección activa (Tareas & Entregas, Recordatorios, Notas)
+  // Sección activa (Tareas, Recordatorios, Notas)
   const [activeSection, setActiveSection] = useState<SectionType>('tareas');
 
-  // Sub-vista de tareas
+  // Sub-vista de tareas (Hoy, Próximos, Hechas)
   const [activeView, setActiveView] = useState<ViewType>('hoy');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  // Tarea actualmente seleccionada para ver en el panel derecho
+  // Tarea o recordatorio seleccionado para el panel lateral
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
 
   // Modales
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
 
-  // Contadores para pestañas y sidebar
+  const isPanelOpen = !!selectedTask || !!selectedReminder;
+
+  // Contadores para pestañas y resumen
   const counts = useMemo(() => {
     let hoy = 0;
     let proximos = 0;
@@ -69,6 +80,8 @@ export const App: React.FC = () => {
           } else if (getDaysRemaining(t.dueDate) > 0) {
             proximos++;
           }
+        } else {
+          hoy++;
         }
       }
     });
@@ -87,26 +100,24 @@ export const App: React.FC = () => {
     };
   }, [tasks, reminders, notes]);
 
-  // Manejadores de tareas
-  const handleOpenCreateTask = () => {
-    setEditingTask(null);
-    setIsTaskModalOpen(true);
+  // Manejador de añadido rápido desde la barra inferior
+  const handleQuickAddTask = (title: string) => {
+    const defaultCatId = selectedCategoryId || (categories[0]?.id ?? 'cat-personal');
+    const created = addTask({
+      title,
+      priority: 'media',
+      categoryId: defaultCatId,
+      dueDate: getTodayString(),
+    });
+    setActiveView('hoy');
+    setSelectedReminder(null);
+    setSelectedTask(created);
   };
 
-  const handleOpenEditTask = (task: Task) => {
-    setEditingTask(task);
-    setIsTaskModalOpen(true);
-  };
-
-  const handleSaveTask = (taskInput: CreateTaskInput | Task) => {
-    if ('id' in taskInput) {
-      updateTask(taskInput as Task);
-      if (selectedTask?.id === taskInput.id) {
-        setSelectedTask(taskInput as Task);
-      }
-    } else {
-      const created = addTask(taskInput as CreateTaskInput);
-      setSelectedTask(created);
+  const handleUpdateTask = (updated: Task) => {
+    updateTask(updated);
+    if (selectedTask?.id === updated.id) {
+      setSelectedTask(updated);
     }
   };
 
@@ -133,150 +144,189 @@ export const App: React.FC = () => {
     refreshNotes();
     refreshReminders();
     setSelectedTask(null);
+    setSelectedReminder(null);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row font-sans transition-colors">
-      {/* Navegación lateral (Desktop) / Barra superior (Móvil) */}
-      <Sidebar
-        activeSection={activeSection}
-        onChangeSection={(sec) => {
-          setActiveSection(sec);
-          setSelectedTask(null);
-        }}
-        isDark={isDark}
-        onToggleDarkMode={toggleDarkMode}
-        onOpenBackup={() => setIsBackupModalOpen(true)}
-        counts={{
-          pendingTasks: counts.pendingTasks,
-          pendingReminders: counts.pendingReminders,
-          notesCount: counts.notesCount,
-        }}
-      />
-
-      {/* Área central principal (aprovecha todo el ancho) */}
-      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        {activeSection === 'tareas' && (
-          <div className="max-w-4xl mx-auto space-y-4">
-            {/* Cabecera de la sección de tareas */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Tareas & Entregas
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Organiza tus materias, proyectos y compromisos diarios.
-                </p>
-              </div>
-
-              <button
-                onClick={handleOpenCreateTask}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 rounded-xl text-xs font-semibold shadow-xs transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nueva tarea</span>
-              </button>
-            </div>
-
-            {/* Banner destacado de Exámenes / Entregas */}
-            <ExamsBanner
-              tasks={tasks}
-              categories={categories}
-              selectedTaskId={selectedTask?.id}
-              onSelectTask={(task) => setSelectedTask(task)}
-              onToggleTask={handleToggleTask}
-            />
-
-            {/* Pestañas de Vista (Hoy, Próximos, Todas, Hechas) */}
-            <ViewTabs
-              activeView={activeView}
-              onChangeView={setActiveView}
-              counts={counts}
-            />
-
-            {/* Filtro por Categorías */}
-            <CategoryFilter
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelectCategory={setSelectedCategoryId}
-              onOpenNewCategory={() => setIsCategoryModalOpen(true)}
-            />
-
-            {/* Lista de Tareas */}
-            <TaskList
-              tasks={tasks}
-              categories={categories}
-              activeView={activeView}
-              selectedCategoryId={selectedCategoryId}
-              selectedTaskId={selectedTask?.id}
-              onSelectTask={(task) => setSelectedTask(task)}
-              onToggleTask={handleToggleTask}
-              onEditTask={handleOpenEditTask}
-              onDeleteTask={handleDeleteTask}
-              onOpenNewTask={handleOpenCreateTask}
-            />
-          </div>
-        )}
-
-        {activeSection === 'recordatorios' && (
-          <RemindersSection
-            reminders={reminders}
-            onAddReminder={addReminder}
-            onToggleReminder={toggleReminder}
-            onDeleteReminder={deleteReminder}
-          />
-        )}
-
-        {activeSection === 'notas' && (
-          <NotesSection
-            notes={notes}
-            onAddNote={addNote}
-            onUpdateNote={updateNote}
-            onTogglePin={togglePinNote}
-            onDeleteNote={deleteNote}
-          />
-        )}
-      </main>
-
-      {/* Panel lateral derecho de detalles de la tarea */}
-      {selectedTask && (
-        <TaskDetailPanel
-          task={selectedTask}
-          category={categories.find((c) => c.id === selectedTask.categoryId)}
-          onClose={() => setSelectedTask(null)}
-          onToggleStatus={handleToggleTask}
-          onEdit={handleOpenEditTask}
-          onDelete={handleDeleteTask}
+    <div
+      className={`h-screen h-[100dvh] overflow-hidden bg-calma-bg text-calma-ink font-sans flex flex-col transition-all duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${
+        isPanelOpen ? 'lg:pr-[480px]' : ''
+      }`}
+    >
+      {/* Panel fijo lateral izquierdo de tareas fijadas (se oculta cuando hay un panel abierto para mantener equilibrio visual) */}
+      {activeSection === 'tareas' && !isPanelOpen && (
+        <PinnedTasksRail
+          tasks={tasks}
+          categories={categories}
+          selectedTaskId={null}
+          onSelectTask={(task) => {
+            setSelectedReminder(null);
+            setSelectedTask(task);
+          }}
+          onToggleTask={handleToggleTask}
+          onTogglePin={togglePinTask}
         />
       )}
 
-      {/* Botón flotante para móvil (solo en tareas) */}
+      {/* Contenedor centrado max-w-[560px] */}
+      <div className="w-full max-w-[560px] mx-auto h-full flex flex-col px-6 pt-5 sm:pt-8 min-h-0">
+        {/* 1. Cabecera y controles superiores fijos (sin scroll) */}
+        <div className="flex-none">
+          <Header
+            activeSection={activeSection}
+            onChangeSection={(sec) => {
+              setActiveSection(sec);
+              setSelectedTask(null);
+              setSelectedReminder(null);
+            }}
+            activeView={activeView}
+            pendingTasksCount={counts.pendingTasks}
+            pendingRemindersCount={counts.pendingReminders}
+            notesCount={counts.notesCount}
+            isDark={isDark}
+            onToggleDarkMode={toggleDarkMode}
+            onOpenBackup={() => setIsBackupModalOpen(true)}
+          />
+
+          {activeSection === 'tareas' && (
+            <>
+              {/* Pestañas de Vista (Hoy, Próximos, Hechas) */}
+              <ViewTabs
+                activeView={activeView}
+                onChangeView={setActiveView}
+                counts={counts}
+              />
+
+              {/* Filtro deslizante de Categorías */}
+              <CategoryFilter
+                categories={categories}
+                selectedCategoryId={selectedCategoryId}
+                onSelectCategory={setSelectedCategoryId}
+                onOpenNewCategory={() => setIsCategoryModalOpen(true)}
+              />
+            </>
+          )}
+        </div>
+
+        {/* 2. Área scrolleable interna (Solo esta sección hace scroll) */}
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-32 overscroll-contain px-1">
+          {/* Sección: Tareas */}
+          {activeSection === 'tareas' && (
+            <div className="space-y-0">
+              {/* Widget de Fechas Clave / Exámenes (solo en vista Hoy) */}
+              {activeView === 'hoy' && (
+                <ExamsBanner
+                  tasks={tasks}
+                  categories={categories}
+                  selectedTaskId={selectedTask?.id}
+                  onSelectTask={(task) => {
+                    setSelectedReminder(null);
+                    setSelectedTask(task);
+                  }}
+                  onToggleTask={handleToggleTask}
+                />
+              )}
+
+              {/* Lista minimalista de tareas */}
+              <TaskList
+                tasks={tasks}
+                categories={categories}
+                activeView={activeView}
+                selectedCategoryId={selectedCategoryId}
+                selectedTaskId={selectedTask?.id}
+                onSelectTask={(task) => {
+                  setSelectedReminder(null);
+                  setSelectedTask(task);
+                }}
+                onToggleTask={handleToggleTask}
+                onTogglePin={togglePinTask}
+                onDeleteTask={handleDeleteTask}
+              />
+            </div>
+          )}
+
+          {/* Sección: Recordatorios */}
+          {activeSection === 'recordatorios' && (
+            <div className="mt-4">
+              <RemindersSection
+                reminders={reminders}
+                selectedReminderId={selectedReminder?.id}
+                onSelectReminder={(r) => {
+                  setSelectedTask(null);
+                  setSelectedReminder(r);
+                }}
+                onAddReminder={addReminder}
+                onToggleReminder={toggleReminder}
+                onDeleteReminder={deleteReminder}
+              />
+            </div>
+          )}
+
+          {/* Sección: Notas */}
+          {activeSection === 'notas' && (
+            <div className="mt-4">
+              <NotesSection
+                notes={notes}
+                onAddNote={addNote}
+                onUpdateNote={updateNote}
+                onTogglePin={togglePinNote}
+                onDeleteNote={deleteNote}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Barra flotante inferior de añadir tarea (solo en sección de tareas) */}
       {activeSection === 'tareas' && (
-        <button
-          onClick={handleOpenCreateTask}
-          className="sm:hidden fixed right-5 bottom-6 z-40 flex items-center gap-2 px-4 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl shadow-lg transition-transform active:scale-95"
-          aria-label="Añadir nueva tarea"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span className="text-xs font-bold">Tarea</span>
-        </button>
+        <AddBar
+          onAddTask={handleQuickAddTask}
+          hasPanelOpen={isPanelOpen}
+        />
       )}
 
-      {/* Modales */}
-      <TaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        categories={categories}
-        initialTask={editingTask}
-        onSave={handleSaveTask}
-      />
+      {/* Panel lateral de detalle de tarea ("La nota") */}
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          categories={categories}
+          onClose={() => setSelectedTask(null)}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
+          onToggleStatus={handleToggleTask}
+        />
+      )}
 
+      {/* Panel lateral de detalle de recordatorio */}
+      {selectedReminder && (
+        <ReminderDetailPanel
+          reminder={selectedReminder}
+          onClose={() => setSelectedReminder(null)}
+          onUpdateReminder={(updated) => {
+            updateReminder(updated);
+            setSelectedReminder(updated);
+          }}
+          onDeleteReminder={(id) => {
+            deleteReminder(id);
+            if (selectedReminder?.id === id) setSelectedReminder(null);
+          }}
+          onToggleStatus={(id) => {
+            toggleReminder(id);
+            setSelectedReminder((prev) =>
+              prev ? { ...prev, isCompleted: !prev.isCompleted } : null
+            );
+          }}
+        />
+      )}
+
+      {/* Modal para crear categoría */}
       <CategoryModal
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         onAddCategory={addCategory}
       />
 
+      {/* Modal para Copia de Seguridad JSON */}
       <DataBackupModal
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}

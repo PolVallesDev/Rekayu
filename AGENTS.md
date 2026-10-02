@@ -6,3 +6,4 @@
 - Antes de cambios grandes, enséñame el plan y espera mi OK.
 - Una función por vez; no toques archivos que no tengan que ver.
 - Explícame los errores de TypeScript en lenguaje sencillo.
+- Consulta CONTEXT.md para especificaciones de diseño Calma, arquitectura y estado actual.

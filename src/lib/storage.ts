@@ -6,10 +6,10 @@ const STORAGE_KEY = 'rekayu_app_data_v1';
 
 // Categorías por defecto del sistema
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat-clase', name: 'Clase', color: '#3B82F6', isDefault: true },
-  { id: 'cat-examenes', name: 'Exámenes', color: '#EF4444', isDefault: true },
-  { id: 'cat-emprendimiento', name: 'Emprendimiento', color: '#8B5CF6', isDefault: true },
-  { id: 'cat-personal', name: 'Personal', color: '#10B981', isDefault: true },
+  { id: 'cat-clase', name: 'Clase', color: '#7E9CB8', isDefault: true },
+  { id: 'cat-examenes', name: 'Exámenes', color: '#B8707A', isDefault: true },
+  { id: 'cat-emprendimiento', name: 'Emprender', color: '#C2A266', isDefault: true },
+  { id: 'cat-personal', name: 'Personal', color: '#8FAE8B', isDefault: true },
 ];
 
 // Semilla de tareas iniciales
@@ -18,28 +18,68 @@ const getSeedTasks = (): Task[] => {
   const d = new Date();
 
   const examDate = new Date(d);
-  examDate.setDate(d.getDate() + 3);
+  examDate.setDate(d.getDate() + 5);
   const examDateStr = examDate.toISOString().split('T')[0];
 
-  const urgentDate = new Date(d);
-  urgentDate.setDate(d.getDate() + 1);
-  const urgentDateStr = urgentDate.toISOString().split('T')[0];
+  const practiceDate = new Date(d);
+  practiceDate.setDate(d.getDate() + 3);
+  const practiceDateStr = practiceDate.toISOString().split('T')[0];
+
+  const tomorrow = new Date(d);
+  tomorrow.setDate(d.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
   return [
     {
       id: 'task-seed-1',
-      title: 'Entrega de propuesta MVP',
-      description: 'Definir propuesta de valor y landing page para el proyecto.',
-      dueDate: urgentDateStr,
+      title: 'Entregar ejercicios de Álgebra',
+      description: 'Ejercicios 3 a 7 del boletín. Subirlos en PDF al campus virtual antes de las 18:00.',
+      dueDate: today,
+      time: '18:00',
       priority: 'alta',
-      categoryId: 'cat-examenes',
+      categoryId: 'cat-clase',
       status: 'pendiente',
+      subtasks: [
+        { id: 'sub-1', text: 'Resolver el ejercicio 5', done: true },
+        { id: 'sub-2', text: 'Pasar a limpio', done: false },
+        { id: 'sub-3', text: 'Subir el PDF', done: false },
+      ],
+      links: [
+        { id: 'link-1', url: 'https://campus.universidad.es/algebra' },
+      ],
       createdAt: new Date().toISOString(),
     },
     {
       id: 'task-seed-2',
-      title: 'Examen de Matemáticas / Finanzas',
-      description: 'Repasar temas 1 al 4 y ejercicios prácticos.',
+      title: 'Repasar el tema 4 de Cálculo II',
+      description: 'Derivadas parciales y regla de la cadena. Hacer los problemas del examen del año pasado.',
+      dueDate: today,
+      priority: 'alta',
+      categoryId: 'cat-examenes',
+      status: 'pendiente',
+      subtasks: [
+        { id: 'sub-4', text: 'Releer apuntes', done: false },
+        { id: 'sub-5', text: 'Problemas de años anteriores', done: false },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-3',
+      title: 'Escribir la propuesta para el primer cliente',
+      description: 'Qué problema resolvemos, precio y plazos. Máximo una página.',
+      dueDate: today,
+      priority: 'media',
+      categoryId: 'cat-emprendimiento',
+      status: 'pendiente',
+      links: [
+        { id: 'link-2', url: 'https://docs.google.com/document' },
+      ],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-4',
+      title: 'Examen de Cálculo II',
+      description: 'Aula 2.3 a primera hora. Llevar calculadora permitida y DNI.',
       dueDate: examDateStr,
       priority: 'alta',
       categoryId: 'cat-examenes',
@@ -47,23 +87,33 @@ const getSeedTasks = (): Task[] => {
       createdAt: new Date().toISOString(),
     },
     {
-      id: 'task-seed-3',
-      title: 'Reunión con primer cliente potencial',
-      description: 'Mostrar demo interactivo y recopilar feedback.',
-      dueDate: today,
+      id: 'task-seed-5',
+      title: 'Práctica de Programación',
+      description: 'Entrega en el repositorio de GitHub de la facultad.',
+      dueDate: practiceDateStr,
+      priority: 'alta',
+      categoryId: 'cat-clase',
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-seed-6',
+      title: 'Reunión con el equipo del proyecto',
+      description: 'Sincronización semanal sobre el desarrollo del prototipo.',
+      dueDate: tomorrowStr,
+      time: '11:30',
       priority: 'media',
       categoryId: 'cat-emprendimiento',
       status: 'pendiente',
       createdAt: new Date().toISOString(),
     },
     {
-      id: 'task-seed-4',
-      title: 'Organizar apuntes de la semana',
-      description: 'Subir resúmenes al cuaderno digital.',
+      id: 'task-seed-7',
+      title: 'Comprar el billete de tren a casa',
       dueDate: today,
       priority: 'baja',
-      categoryId: 'cat-clase',
-      status: 'hecha',
+      categoryId: 'cat-personal',
+      status: 'pendiente',
       createdAt: new Date().toISOString(),
     },
   ];

@@ -81,3 +81,30 @@ export const formatDateFriendly = (dueDateString: string): string => {
     month: 'short',
   });
 };
+
+/**
+ * Devuelve la fecha actual en formato extendido en español (ej: "viernes, 2 de octubre")
+ */
+export const getTodayFormattedLong = (): string => {
+  const now = new Date();
+  return now.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+};
+
+/**
+ * Devuelve una fecha en formato extendido en español (ej: "miércoles, 7 de octubre")
+ */
+export const formatDateLongSpanish = (dueDateString: string): string => {
+  if (!dueDateString) return '';
+  const [year, month, day] = dueDateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+};
+

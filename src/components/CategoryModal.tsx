@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Palette } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -8,16 +8,16 @@ interface CategoryModalProps {
 }
 
 const PRESET_COLORS = [
-  '#3B82F6', // Azul (Clase)
-  '#EF4444', // Rojo (Exámenes)
-  '#8B5CF6', // Violeta (Emprendimiento)
-  '#10B981', // Esmeralda (Personal)
-  '#F59E0B', // Ámbar
-  '#EC4899', // Rosa
-  '#06B6D4', // Cian
-  '#6366F1', // Índigo
-  '#14B8A6', // Teal
-  '#F97316', // Naranja
+  '#7E9CB8', // Clase (Azul denim)
+  '#B8707A', // Exámenes (Terracota / Rosa)
+  '#C2A266', // Emprender (Bronce / Ámbar)
+  '#8FAE8B', // Personal (Salvia)
+  '#5F8F80', // Verde Calma
+  '#6C8B93', // Océano grisáceo
+  '#A0849D', // Lavanda suave
+  '#C99378', // Arcilla
+  '#7A8B7B', // Olivo
+  '#9B8F80', // Tierra cálido
 ];
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({
@@ -26,7 +26,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   onAddCategory,
 }) => {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#6366F1');
+  const [color, setColor] = useState('#7E9CB8');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
@@ -40,27 +40,24 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
     onAddCategory(name.trim(), color);
     setName('');
-    setColor('#6366F1');
+    setColor('#7E9CB8');
     setError('');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
       <div
-        className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm bg-calma-surface rounded-2xl p-6 shadow-2xl border border-calma-line animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Nueva Categoría
-            </h2>
-          </div>
+        <div className="flex items-center justify-between pb-3 border-b border-calma-line">
+          <h2 className="text-lg font-serif font-normal text-calma-ink m-0">
+            Nueva Categoría
+          </h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-1.5 text-calma-muted hover:text-calma-ink rounded-lg hover:bg-calma-bg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -68,14 +65,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {error && (
-            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl font-medium">
+            <div className="p-2.5 bg-calma-warn/10 border border-calma-warn text-calma-warn text-xs rounded-xl font-medium">
               {error}
             </div>
           )}
 
           {/* Nombre de la categoría */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[13px] font-medium text-calma-muted mb-1.5">
               Nombre *
             </label>
             <input
@@ -87,13 +84,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 if (error) setError('');
               }}
               placeholder="Ej. Tesis, Gimnasio, Finanzas..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-calma-line bg-calma-bg text-calma-ink text-[14.5px] focus:outline-none focus:ring-2 focus:ring-calma-accent transition-all placeholder:text-calma-muted"
             />
           </div>
 
           {/* Selector de color */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-[13px] font-medium text-calma-muted mb-2">
               Color identificador
             </label>
             <div className="grid grid-cols-5 gap-2.5 mb-3">
@@ -102,9 +99,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform ${
                     color.toLowerCase() === c.toLowerCase()
-                      ? 'scale-110 ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900 shadow-sm'
+                      ? 'scale-110 ring-2 ring-offset-2 ring-calma-accent dark:ring-offset-calma-surface shadow-xs'
                       : 'hover:scale-105 opacity-85'
                   }`}
                   style={{ backgroundColor: c }}
@@ -113,30 +110,30 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             </div>
 
             {/* Selector de color personalizado */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Personalizado:</span>
+            <div className="flex items-center gap-2 pt-2 border-t border-calma-line">
+              <span className="text-[12px] text-calma-muted">Personalizado:</span>
               <input
                 type="color"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 className="w-7 h-7 rounded-lg border-0 cursor-pointer bg-transparent"
               />
-              <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{color}</span>
+              <span className="text-[12px] font-mono text-calma-muted">{color}</span>
             </div>
           </div>
 
           {/* Botones de acción */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-calma-line">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl"
+              className="px-4 py-2 text-[13px] font-medium text-calma-muted hover:text-calma-ink rounded-xl"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/20 transition-all"
+              className="px-5 py-2.5 text-[13px] font-medium bg-calma-accent text-white rounded-xl hover:opacity-90 transition-all shadow-xs"
             >
               Crear categoría
             </button>

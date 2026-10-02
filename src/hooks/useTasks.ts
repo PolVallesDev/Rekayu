@@ -1,13 +1,16 @@
 import { useState, useCallback } from 'react';
-import { Task, Priority, TaskStatus } from '../types';
+import { Task, Priority, TaskStatus, Subtask, TaskLink } from '../types';
 import { getTasks, saveTasks } from '../lib/storage';
 
 export interface CreateTaskInput {
   title: string;
   description?: string;
   dueDate?: string;
+  time?: string;
   priority: Priority;
   categoryId: string;
+  subtasks?: Subtask[];
+  links?: TaskLink[];
 }
 
 export const useTasks = () => {
@@ -20,9 +23,12 @@ export const useTasks = () => {
       title: input.title.trim(),
       description: input.description?.trim() || undefined,
       dueDate: input.dueDate || undefined,
+      time: input.time || undefined,
       priority: input.priority,
       categoryId: input.categoryId,
       status: 'pendiente',
+      subtasks: input.subtasks || [],
+      links: input.links || [],
       createdAt: new Date().toISOString(),
     };
 
@@ -52,6 +58,13 @@ export const useTasks = () => {
     setTasks(updated);
   }, [tasks]);
 
+  // Alternar fijado / pineado de una tarea
+  const togglePinTask = useCallback((id: string) => {
+    const updated = tasks.map((t) => (t.id === id ? { ...t, isPinned: !t.isPinned } : t));
+    saveTasks(updated);
+    setTasks(updated);
+  }, [tasks]);
+
   // Eliminar una tarea
   const deleteTask = useCallback((id: string) => {
     const updated = tasks.filter((t) => t.id !== id);
@@ -69,6 +82,7 @@ export const useTasks = () => {
     addTask,
     updateTask,
     toggleTaskStatus,
+    togglePinTask,
     deleteTask,
     refreshTasks,
   };

@@ -35,6 +35,17 @@ export const useReminders = () => {
     [reminders]
   );
 
+  const updateReminder = useCallback(
+    (updatedReminder: Reminder) => {
+      const updated = reminders.map((r) =>
+        r.id === updatedReminder.id ? updatedReminder : r
+      );
+      saveReminders(updated);
+      setReminders(updated);
+    },
+    [reminders]
+  );
+
   const deleteReminder = useCallback(
     (id: string) => {
       const updated = reminders.filter((r) => r.id !== id);
@@ -51,6 +62,7 @@ export const useReminders = () => {
   return {
     reminders,
     addReminder,
+    updateReminder,
     toggleReminder,
     deleteReminder,
     refreshReminders,

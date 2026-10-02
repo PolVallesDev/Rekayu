@@ -2,10 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globales y utilidades para móviles */
 @layer base {
-  html {
+  :root {
+    --bg: #F2F4F3;
+    --surface: #FFFFFF;
+    --ink: #1E2A2D;
+    --muted: #7C8B8F;
+    --line: #E4E9E8;
+    --accent: #5F8F80;
+    --accent-soft: #E3EEEA;
+    --warn: #B8707A;
+    --c-clase: #7E9CB8;
+    --c-examenes: #B8707A;
+    --c-emprender: #C2A266;
+    --c-personal: #8FAE8B;
+    --shadow: 0 1px 2px rgba(30, 42, 45, .04), 0 8px 24px rgba(30, 42, 45, .04);
+    --panel-w: 480px;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg: #121819;
+    --surface: #192123;
+    --ink: #E6ECEA;
+    --muted: #8C9B9E;
+    --line: #263033;
+    --accent: #7FB3A2;
+    --accent-soft: #1F302B;
+    --warn: #D08A93;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
   }
 }
 

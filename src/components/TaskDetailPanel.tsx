@@ -1,37 +1,39 @@
-import React, { useEffect } from 'react';
-import { Task, Category } from '../types';
-import { formatDateFriendly, getDaysRemaining, getUrgencyLevel } from '../lib/dates';
+import React, { useEffect, useRef, useState } from 'react';
+import { Task, Category, Priority, Subtask, TaskLink } from '../types';
 import {
   X,
-  Calendar,
-  Flag,
-  Tag,
-  CheckCircle2,
-  Clock,
-  Edit3,
+  ArrowLeft,
   Trash2,
-  Circle,
-  CalendarDays,
+  Check,
+  Link as LinkIcon,
+  Pin,
 } from 'lucide-react';
+import { formatDateLongSpanish } from '../lib/dates';
 
 interface TaskDetailPanelProps {
   task: Task | null;
-  category?: Category;
+  categories: Category[];
   onClose: () => void;
+  onUpdateTask: (updated: Task) => void;
+  onDeleteTask: (id: string) => void;
   onToggleStatus: (id: string) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
 }
 
 export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   task,
-  category,
+  categories,
   onClose,
+  onUpdateTask,
+  onDeleteTask,
   onToggleStatus,
-  onEdit,
-  onDelete,
 }) => {
-  // Cerrar al pulsar Escape
+  const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+
+  // Escuchar tecla Escape para cerrar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -40,272 +42,414 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  // Autoajuste de altura de textareas
+  const autoResize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    if (task) {
+      setTimeout(() => {
+        autoResize(titleRef.current);
+        autoResize(notesRef.current);
+      }, 50);
+    }
+  }, [task?.id]);
+
   if (!task) return null;
 
   const isDone = task.status === 'hecha';
-  const daysRemaining = task.dueDate ? getDaysRemaining(task.dueDate) : null;
-  const urgency = task.dueDate ? getUrgencyLevel(task.dueDate) : null;
+  const category = categories.find((c) => c.id === task.categoryId) || categories[0];
 
-  const getUrgencyBadge = () => {
-    if (daysRemaining === null) return null;
-    let label = `${daysRemaining} días`;
-    if (daysRemaining < 0) label = `Venció hace ${Math.abs(daysRemaining)}d`;
-    else if (daysRemaining === 0) label = 'Vence hoy';
-    else if (daysRemaining === 1) label = 'Mañana';
-
-    let colorClasses = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
-    if (urgency === 'vencido' || urgency === 'urgente') {
-      colorClasses = 'text-rose-500 bg-rose-500/10 border-rose-500/20';
-    } else if (urgency === 'proximo') {
-      colorClasses = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-    }
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${colorClasses}`}>
-        <Clock className="w-3 h-3" />
-        {label}
-      </span>
-    );
+  // Helpers para actualizar campos de la tarea
+  const handleChangeTitle = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    autoResize(e.target);
+    onUpdateTask({ ...task, title: e.target.value });
   };
 
-  const getPriorityStyle = () => {
-    switch (task.priority) {
-      case 'alta':
-        return 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20';
-      case 'media':
-        return 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20';
-      case 'baja':
-      default:
-        return 'text-slate-600 dark:text-slate-400 bg-slate-500/10 border-slate-500/20';
+  const handleChangeNotes = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    autoResize(e.target);
+    onUpdateTask({ ...task, description: e.target.value });
+  };
+
+  const handleChangeCategory = (catId: string) => {
+    onUpdateTask({ ...task, categoryId: catId });
+  };
+
+  const handleChangeDate = (dateVal: string) => {
+    onUpdateTask({ ...task, dueDate: dateVal || undefined });
+  };
+
+  const handleChangeTime = (timeVal: string) => {
+    onUpdateTask({ ...task, time: timeVal || undefined });
+  };
+
+  const handleChangePriority = (prio: Priority) => {
+    onUpdateTask({ ...task, priority: prio });
+  };
+
+  // Subtareas
+  const handleToggleSubtask = (subId: string) => {
+    const currentSubs = task.subtasks || [];
+    const updated = currentSubs.map((s) =>
+      s.id === subId ? { ...s, done: !s.done } : s
+    );
+    onUpdateTask({ ...task, subtasks: updated });
+  };
+
+  const handleAddSubtask = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || !newSubtaskText.trim()) return;
+    e.preventDefault();
+    const newSub: Subtask = {
+      id: `sub-${Date.now()}`,
+      text: newSubtaskText.trim(),
+      done: false,
+    };
+    const updated = [...(task.subtasks || []), newSub];
+    onUpdateTask({ ...task, subtasks: updated });
+    setNewSubtaskText('');
+  };
+
+  const handleDeleteSubtask = (subId: string) => {
+    const updated = (task.subtasks || []).filter((s) => s.id !== subId);
+    onUpdateTask({ ...task, subtasks: updated });
+  };
+
+  // Enlaces
+  const normalizeUrl = (raw: string): string | null => {
+    let url = raw.trim();
+    if (!url) return null;
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
     }
+    try {
+      new URL(url);
+      return url;
+    } catch {
+      return null;
+    }
+  };
+
+  const getDomain = (url: string) => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return url;
+    }
+  };
+
+  const handleAddLink = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || !newLinkUrl.trim()) return;
+    e.preventDefault();
+    const valid = normalizeUrl(newLinkUrl);
+    if (!valid) return;
+    const newLink: TaskLink = {
+      id: `link-${Date.now()}`,
+      url: valid,
+    };
+    const updated = [...(task.links || []), newLink];
+    onUpdateTask({ ...task, links: updated });
+    setNewLinkUrl('');
+  };
+
+  const handleDeleteLink = (linkId: string) => {
+    const updated = (task.links || []).filter((l) => l.id !== linkId);
+    onUpdateTask({ ...task, links: updated });
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop con desenfoque suave para cerrar al hacer clic fuera */}
+    <>
+      {/* Backdrop para móviles */}
       <div
-        className="fixed inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-opacity duration-300 animate-in fade-in"
+        className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-xs z-30 animate-in fade-in"
         onClick={onClose}
       />
 
-      {/* Drawer deslizante moderno (Slide-over) */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <aside className="w-screen max-w-md sm:max-w-lg bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-out animate-in slide-in-from-right">
-          
-          {/* Header Superior */}
-          <div>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              {/* Etiqueta de categoría en el encabezado */}
-              <div className="flex items-center gap-2">
-                {category ? (
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border"
-                    style={{
-                      backgroundColor: `${category.color}15`,
-                      borderColor: `${category.color}35`,
-                      color: category.color,
-                    }}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                    {category.name}
-                  </span>
-                ) : (
-                  <span className="text-xs text-slate-400 font-medium">Tarea</span>
-                )}
-              </div>
+      {/* Panel lateral (480px fijo a la derecha en escritorio, pantalla completa en móvil) */}
+      <aside
+        className="fixed top-0 right-0 bottom-0 z-40 w-full lg:w-[480px] bg-calma-surface border-l border-calma-line shadow-2xl flex flex-col overflow-y-auto overscroll-contain transition-transform duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+        aria-label="Detalle de la tarea"
+      >
+        <div className="max-w-[520px] w-full mx-auto px-6 sm:px-7 pt-[calc(20px+env(safe-area-inset-top,0px))] pb-[calc(40px+env(safe-area-inset-bottom,0px))]">
+          {/* Barra superior de navegación */}
+          <div className="flex items-center justify-between mb-5 -mx-2.5">
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
+              aria-label="Cerrar panel"
+            >
+              <X className="w-5 h-5 hidden sm:block" />
+              <ArrowLeft className="w-5 h-5 sm:hidden" />
+            </button>
 
-              {/* Botones de acción rápida */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onEdit(task)}
-                  className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  title="Editar tarea"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`¿Eliminar definitivamente "${task.title}"?`)) {
-                      onDelete(task.id);
-                      onClose();
-                    }
-                  }}
-                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-                  title="Eliminar tarea"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div className="w-[1px] h-4 bg-slate-200 dark:border-slate-800 mx-1" />
-                <button
-                  onClick={onClose}
-                  className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  title="Cerrar panel (Esc)"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateTask({ ...task, isPinned: !task.isPinned })}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                  task.isPinned
+                    ? 'text-calma-accent bg-calma-accent-soft'
+                    : 'text-calma-muted hover:text-calma-ink hover:bg-calma-bg'
+                }`}
+                title={task.isPinned ? 'Desfijar tarea' : 'Fijar tarea'}
+                aria-label={task.isPinned ? 'Desfijar tarea' : 'Fijar tarea'}
+              >
+                <Pin className="w-4.5 h-4.5" />
+              </button>
+
+              <button
+                onClick={() => {
+                  if (window.confirm(`¿Eliminar la tarea "${task.title}"?`)) {
+                    onDeleteTask(task.id);
+                    onClose();
+                  }
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-warn hover:bg-calma-bg transition-colors"
+                aria-label="Eliminar tarea"
+                title="Eliminar tarea"
+              >
+                <Trash2 className="w-4.5 h-4.5" />
+              </button>
             </div>
+          </div>
 
-            {/* Contenido principal con scroll */}
-            <div className="px-6 py-6 space-y-6 overflow-y-auto max-h-[calc(100vh-140px)]">
-              
-              {/* Título de la tarea con checkbox elegante */}
-              <div className="flex items-start gap-3.5">
+          {/* Título editable en Instrument Serif */}
+          <textarea
+            ref={titleRef}
+            rows={1}
+            value={task.title}
+            onChange={handleChangeTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                notesRef.current?.focus();
+              }
+            }}
+            placeholder="Sin título"
+            className="w-full bg-transparent border-0 outline-none resize-none font-serif text-[34px] sm:text-[38px] leading-[1.15] tracking-tight text-calma-ink placeholder:text-calma-muted p-0 mb-6"
+          />
+
+          {/* Lista de propiedades */}
+          <dl className="space-y-0 mb-7 text-[15px]">
+            {/* Estado */}
+            <div className="flex items-center min-h-[48px] border-t border-b border-calma-line">
+              <dt className="w-24 flex-none text-calma-muted text-[14px]">Estado</dt>
+              <dd className="m-0 flex items-center">
                 <button
+                  type="button"
                   onClick={() => onToggleStatus(task.id)}
-                  className={`flex-shrink-0 w-6 h-6 mt-1 rounded-lg border-2 flex items-center justify-center transition-all ${
-                    isDone
-                      ? 'bg-slate-900 border-slate-900 text-white dark:bg-white dark:border-white dark:text-slate-900'
-                      : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
-                  }`}
-                  title={isDone ? 'Marcar como pendiente' : 'Marcar como completada'}
+                  className="inline-flex items-center gap-2.5 px-2 py-1 -ml-2 rounded-lg hover:bg-calma-bg transition-colors text-calma-ink"
                 >
-                  {isDone ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <Circle className="w-3.5 h-3.5 text-transparent hover:text-slate-400" />
-                  )}
-                </button>
-
-                <div className="flex-1">
-                  <h1
-                    className={`text-xl font-bold leading-snug tracking-tight ${
-                      isDone
-                        ? 'line-through text-slate-400 dark:text-slate-500'
-                        : 'text-slate-900 dark:text-white'
-                    }`}
-                  >
-                    {task.title}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Inspector de propiedades (Estilo Notion/Linear) */}
-              <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-3 text-xs">
-                
-                {/* Estado */}
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Estado
-                  </span>
-                  <button
-                    onClick={() => onToggleStatus(task.id)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold border transition-colors ${
-                      isDone
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-slate-200/60 dark:bg-slate-700/60 border-transparent text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {isDone ? 'Completada' : 'Pendiente'}
-                  </button>
-                </div>
-
-                {/* Prioridad */}
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500 font-medium">
-                    <Flag className="w-3.5 h-3.5" />
-                    Prioridad
-                  </span>
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-md font-semibold capitalize border ${getPriorityStyle()}`}
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                      isDone
+                        ? 'bg-calma-accent border-calma-accent text-white'
+                        : 'border-calma-muted text-transparent'
+                    }`}
                   >
-                    {task.priority}
+                    <Check className="w-3 h-3 stroke-[2.8]" />
                   </span>
-                </div>
+                  <span>{isDone ? 'Hecha' : 'Pendiente'}</span>
+                </button>
+              </dd>
+            </div>
 
-                {/* Fecha límite */}
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500 font-medium">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Fecha límite
-                  </span>
-                  {task.dueDate ? (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
-                        {formatDateFriendly(task.dueDate)}
-                      </span>
-                      {getUrgencyBadge()}
-                    </div>
-                  ) : (
-                    <span className="text-slate-400 italic">Sin fecha</span>
-                  )}
-                </div>
+            {/* Categoría */}
+            <div className="flex items-center min-h-[48px] border-b border-calma-line">
+              <dt className="w-24 flex-none text-calma-muted text-[14px]">Categoría</dt>
+              <dd className="m-0 flex items-center gap-2 flex-1">
+                <span
+                  className="w-2 h-2 rounded-full flex-none"
+                  style={{ backgroundColor: category?.color || 'var(--muted)' }}
+                />
+                <select
+                  value={task.categoryId}
+                  onChange={(e) => handleChangeCategory(e.target.value)}
+                  className="bg-transparent border-0 outline-none text-calma-ink -ml-1 px-1 py-1 rounded-lg hover:bg-calma-bg cursor-pointer text-[15px]"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id} className="text-slate-900 bg-white dark:bg-slate-900 dark:text-white">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </dd>
+            </div>
 
-                {/* Categoría */}
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500 font-medium">
-                    <Tag className="w-3.5 h-3.5" />
-                    Categoría
-                  </span>
-                  {category ? (
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {category.name}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 italic">General</span>
-                  )}
-                </div>
+            {/* Fecha y Hora */}
+            <div className="flex items-center min-h-[48px] border-b border-calma-line">
+              <dt className="w-24 flex-none text-calma-muted text-[14px]">Fecha</dt>
+              <dd className="m-0 flex items-center gap-3 flex-1 flex-wrap">
+                <input
+                  type="date"
+                  value={task.dueDate || ''}
+                  onChange={(e) => handleChangeDate(e.target.value)}
+                  className="bg-transparent border-0 outline-none text-calma-ink -ml-1 px-1 py-1 rounded-lg hover:bg-calma-bg cursor-pointer text-[14.5px]"
+                />
+                <input
+                  type="time"
+                  value={task.time || ''}
+                  onChange={(e) => handleChangeTime(e.target.value)}
+                  className="bg-transparent border-0 outline-none text-calma-muted hover:text-calma-ink px-1 py-1 rounded-lg hover:bg-calma-bg cursor-pointer text-[14.5px]"
+                />
+              </dd>
+            </div>
 
-                {/* Creada el */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-200/40 dark:border-slate-700/40 text-[11px]">
-                  <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    Creada
-                  </span>
-                  <span className="text-slate-500">
-                    {new Date(task.createdAt).toLocaleDateString('es-ES', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </span>
+            {/* Prioridad */}
+            <div className="flex items-center min-h-[48px] border-b border-calma-line">
+              <dt className="w-24 flex-none text-calma-muted text-[14px]">Prioridad</dt>
+              <dd className="m-0 flex items-center">
+                <div className="inline-flex bg-calma-bg p-1 rounded-full gap-0.5">
+                  {(['baja', 'media', 'alta'] as Priority[]).map((p) => {
+                    const isSelected = task.priority === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => handleChangePriority(p)}
+                        className={`px-3 py-1 rounded-full text-[13px] capitalize transition-all ${
+                          isSelected
+                            ? 'bg-calma-surface text-calma-ink shadow-calma font-medium'
+                            : 'text-calma-muted hover:text-calma-ink'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </dd>
+            </div>
+          </dl>
 
-              {/* Descripción / Notas */}
-              <div className="space-y-2 pt-2">
-                <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Notas y Detalles
-                </h3>
-                {task.description ? (
-                  <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-normal">
-                    {task.description}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 italic py-2">
-                    No hay detalles ni notas para esta tarea. Puedes pulsar en "Editar tarea" para añadir enlaces, pasos o apuntes.
-                  </p>
-                )}
+          {/* Bloque: Notas */}
+          <section className="mb-7">
+            <h2 className="text-[14px] font-medium text-calma-muted mb-2.5">Notas</h2>
+            <textarea
+              ref={notesRef}
+              rows={4}
+              value={task.description || ''}
+              onChange={handleChangeNotes}
+              placeholder="Escribe aquí lo que necesites recordar…"
+              className="w-full bg-calma-bg rounded-2xl p-4 text-calma-ink placeholder:text-calma-muted border-0 outline-none resize-none leading-relaxed text-[15px] focus:ring-2 focus:ring-calma-accent"
+            />
+          </section>
+
+          {/* Bloque: Subtareas */}
+          <section className="mb-7">
+            <h2 className="text-[14px] font-medium text-calma-muted mb-2.5">Subtareas</h2>
+            <ul className="space-y-1 mb-2">
+              {(task.subtasks || []).map((sub) => (
+                <li
+                  key={sub.id}
+                  className="group flex items-center gap-3 py-1.5 text-[15px] text-calma-ink"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSubtask(sub.id)}
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors flex-none ${
+                      sub.done
+                        ? 'bg-calma-accent border-calma-accent text-white'
+                        : 'border-calma-muted text-transparent hover:border-calma-accent'
+                    }`}
+                    aria-label="Marcar subtarea"
+                  >
+                    <Check className="w-3 h-3 stroke-[2.8]" />
+                  </button>
+
+                  <span className={`flex-1 break-words ${sub.done ? 'line-through text-calma-muted' : ''}`}>
+                    {sub.text}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSubtask(sub.id)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-calma-muted opacity-0 group-hover:opacity-100 hover:text-calma-ink hover:bg-calma-bg transition-all"
+                    aria-label="Quitar subtarea"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <input
+              type="text"
+              value={newSubtaskText}
+              onChange={(e) => setNewSubtaskText(e.target.value)}
+              onKeyDown={handleAddSubtask}
+              placeholder="+ Añadir subtarea (pulsa Enter)"
+              className="w-full bg-transparent border-b border-dashed border-calma-line focus:border-calma-accent outline-none text-[15px] text-calma-ink placeholder:text-calma-muted py-2 transition-colors"
+            />
+          </section>
+
+          {/* Bloque: Enlaces */}
+          <section className="mb-7">
+            <h2 className="text-[14px] font-medium text-calma-muted mb-2.5">Enlaces</h2>
+            <ul className="space-y-2 mb-2">
+              {(task.links || []).map((link) => (
+                <li
+                  key={link.id}
+                  className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-calma-bg text-calma-muted text-[14px]"
+                >
+                  <LinkIcon className="w-4 h-4 flex-none" />
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 truncate text-calma-ink hover:underline"
+                  >
+                    {getDomain(link.url)}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLink(link.id)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-calma-muted opacity-0 group-hover:opacity-100 hover:text-calma-ink transition-opacity"
+                    aria-label="Quitar enlace"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <input
+              type="text"
+              value={newLinkUrl}
+              onChange={(e) => setNewLinkUrl(e.target.value)}
+              onKeyDown={handleAddLink}
+              placeholder="+ Pega un enlace y pulsa Enter"
+              className="w-full bg-transparent border-b border-dashed border-calma-line focus:border-calma-accent outline-none text-[15px] text-calma-ink placeholder:text-calma-muted py-2 transition-colors"
+            />
+          </section>
+
+          {/* Bloque: Integraciones */}
+          <section className="mb-8">
+            <h2 className="text-[14px] font-medium text-calma-muted mb-2.5">Integraciones</h2>
+            <div className="border border-dashed border-calma-line rounded-2xl p-4 text-[14px] text-calma-muted">
+              <p className="m-0">Conecta esta tarea con tus herramientas. Próximamente.</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {['Calendario', 'Drive', 'Notion', 'Correo'].map((tool) => (
+                  <span
+                    key={tool}
+                    className="px-3 py-1 rounded-full bg-calma-bg text-[13px] text-calma-muted select-none"
+                  >
+                    {tool}
+                  </span>
+                ))}
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Footer del Drawer */}
-          <div className="p-4 px-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 flex items-center justify-between gap-3">
-            <button
-              onClick={() => onToggleStatus(task.id)}
-              className={`flex-1 py-2 px-4 rounded-xl text-xs font-semibold transition-all ${
-                isDone
-                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-              }`}
-            >
-              {isDone ? 'Volver a marcar como pendiente' : 'Marcar como completada'}
-            </button>
-
-            <button
-              onClick={() => onEdit(task)}
-              className="py-2 px-4 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors"
-            >
-              Editar
-            </button>
-          </div>
-        </aside>
-      </div>
-    </div>
+          {/* Pie: Fecha de creación */}
+          <p className="text-[13px] text-calma-muted m-0">
+            {task.createdAt && `Creada el ${formatDateLongSpanish(task.createdAt.split('T')[0])}`}
+          </p>
+        </div>
+      </aside>
+    </>
   );
 };

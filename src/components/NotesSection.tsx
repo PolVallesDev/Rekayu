@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note } from '../types';
-import { Plus, Pin, Trash2, Edit3, FileText, X } from 'lucide-react';
+import { Plus, Pin, Trash2, Edit3, X } from 'lucide-react';
 
 interface NotesSectionProps {
   notes: Note[];
@@ -59,23 +59,14 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
   const otherNotes = notes.filter((n) => !n.isPinned);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Encabezado */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-4 h-4 text-indigo-500" />
-            Notas & Anotaciones
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Apuntes rápidos, ideas para el proyecto o resúmenes de estudio.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Botón para crear nueva nota */}
+      <div className="flex justify-end">
         <button
           onClick={handleStartCreate}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 rounded-lg text-xs font-semibold shadow-xs transition-all"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-calma-accent text-white hover:opacity-90 rounded-full text-[14px] font-medium shadow-xs transition-all"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4 stroke-[2.2]" />
           <span>Nueva nota</span>
         </button>
       </div>
@@ -83,11 +74,11 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
       {/* Grid de notas fijadas */}
       {pinnedNotes.length > 0 && (
         <div className="space-y-2.5">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Pin className="w-3 h-3 text-indigo-500" />
+          <span className="text-[12px] font-medium text-calma-muted uppercase tracking-wider flex items-center gap-1.5">
+            <Pin className="w-3.5 h-3.5 text-calma-accent" />
             Fijadas ({pinnedNotes.length})
           </span>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {pinnedNotes.map((note) => (
               <NoteCard
                 key={note.id}
@@ -104,22 +95,22 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
       {/* Grid de resto de notas */}
       <div className="space-y-2.5">
         {pinnedNotes.length > 0 && otherNotes.length > 0 && (
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+          <span className="text-[12px] font-medium text-calma-muted uppercase tracking-wider block">
             Otras notas
           </span>
         )}
         {notes.length === 0 ? (
-          <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white/40 dark:bg-slate-900/30">
-            <p className="text-xs text-slate-400 mb-2">No tienes notas todavía.</p>
+          <div className="text-center py-12 border border-dashed border-calma-line rounded-2xl">
+            <p className="text-[14px] text-calma-muted mb-2 m-0">No tienes notas todavía.</p>
             <button
               onClick={handleStartCreate}
-              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-[14px] font-medium text-calma-accent hover:underline mt-1"
             >
               Crear tu primera anotación
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {otherNotes.map((note) => (
               <NoteCard
                 key={note.id}
@@ -135,13 +126,13 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
 
       {/* Modal para Crear o Editar Nota */}
       {(isCreating || editingNote) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div
-            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-lg bg-calma-surface rounded-2xl p-5 shadow-2xl border border-calma-line space-y-4 animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-2 border-b border-calma-line">
+              <h3 className="text-base font-serif font-normal text-calma-ink">
                 {editingNote ? 'Editar nota' : 'Nueva nota'}
               </h3>
               <button
@@ -149,7 +140,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
                   setIsCreating(false);
                   setEditingNote(null);
                 }}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 text-calma-muted hover:text-calma-ink rounded-lg hover:bg-calma-bg"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -165,8 +156,8 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
                   autoFocus
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Título de la nota..."
-                  className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Título de la nota…"
+                  className="w-full px-3.5 py-2.5 text-[15px] bg-calma-bg border-0 rounded-xl text-calma-ink placeholder:text-calma-muted focus:outline-none focus:ring-2 focus:ring-calma-accent"
                 />
               </div>
 
@@ -175,25 +166,25 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
                   rows={8}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Escribe lo que tengas en mente..."
-                  className="w-full px-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none leading-relaxed"
+                  placeholder="Escribe lo que tengas en mente…"
+                  className="w-full px-3.5 py-3 text-[14.5px] bg-calma-bg border-0 rounded-xl text-calma-ink placeholder:text-calma-muted focus:outline-none focus:ring-2 focus:ring-calma-accent resize-none leading-relaxed"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-calma-line">
                 <button
                   type="button"
                   onClick={() => {
                     setIsCreating(false);
                     setEditingNote(null);
                   }}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg"
+                  className="px-4 py-2 text-[14px] text-calma-muted hover:text-calma-ink rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
+                  className="px-5 py-2 bg-calma-accent text-white rounded-xl text-[14px] font-medium hover:opacity-90 transition-opacity"
                 >
                   Guardar nota
                 </button>
@@ -215,11 +206,11 @@ const NoteCard: React.FC<{
 }> = ({ note, onEdit, onTogglePin, onDelete }) => (
   <div
     onClick={onEdit}
-    className="group relative p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-xs"
+    className="group relative p-4 rounded-2xl border border-calma-line/60 bg-calma-surface hover:border-calma-line transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-calma"
   >
     <div>
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3 className="text-[15px] font-medium text-calma-ink line-clamp-1 m-0">
           {note.title}
         </h3>
         <button
@@ -229,8 +220,8 @@ const NoteCard: React.FC<{
           }}
           className={`p-1 rounded-md transition-colors ${
             note.isPinned
-              ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50'
-              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+              ? 'text-calma-accent bg-calma-accent-soft'
+              : 'text-calma-muted hover:text-calma-ink'
           }`}
           title={note.isPinned ? 'Desfijar nota' : 'Fijar nota arriba'}
         >
@@ -238,12 +229,12 @@ const NoteCard: React.FC<{
         </button>
       </div>
 
-      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-4 whitespace-pre-wrap leading-relaxed">
-        {note.content || <span className="italic text-slate-400">Sin contenido...</span>}
+      <p className="text-[13.5px] text-calma-muted line-clamp-4 whitespace-pre-wrap leading-relaxed m-0">
+        {note.content || <span className="italic text-calma-muted/60">Sin contenido...</span>}
       </p>
     </div>
 
-    <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-400">
+    <div className="flex items-center justify-between pt-3 mt-3 border-t border-calma-line text-[11px] text-calma-muted">
       <span>{new Date(note.updatedAt).toLocaleDateString('es-ES')}</span>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
@@ -251,10 +242,10 @@ const NoteCard: React.FC<{
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          className="p-1 hover:text-calma-accent transition-colors"
           title="Editar"
         >
-          <Edit3 className="w-3 h-3" />
+          <Edit3 className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={(e) => {
@@ -263,10 +254,10 @@ const NoteCard: React.FC<{
               onDelete();
             }
           }}
-          className="p-1 hover:text-rose-500 transition-colors"
+          className="p-1 hover:text-calma-warn transition-colors"
           title="Eliminar"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

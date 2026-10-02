@@ -6,7 +6,31 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+      },
+      colors: {
+        calma: {
+          bg: 'var(--bg)',
+          surface: 'var(--surface)',
+          ink: 'var(--ink)',
+          muted: 'var(--muted)',
+          line: 'var(--line)',
+          accent: 'var(--accent)',
+          'accent-soft': 'var(--accent-soft)',
+          warn: 'var(--warn)',
+          clase: 'var(--c-clase)',
+          examenes: 'var(--c-examenes)',
+          emprender: 'var(--c-emprender)',
+          personal: 'var(--c-personal)',
+        },
+      },
+      boxShadow: {
+        calma: 'var(--shadow)',
+      },
+    },
   },
   plugins: [],
 }
