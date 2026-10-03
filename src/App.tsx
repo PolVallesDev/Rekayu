@@ -7,6 +7,7 @@ import { useNotes } from './hooks/useNotes';
 import { useReminders } from './hooks/useReminders';
 import { isOverdue, isToday, getDaysRemaining, getTodayString } from './lib/dates';
 import { useRouterNav } from './hooks/useRouterNav';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import { FloatingNav } from './components/FloatingNav';
 import { Header } from './components/Header';
@@ -24,6 +25,7 @@ import { RemindersSection } from './components/RemindersSection';
 import { NotesSection } from './components/NotesSection';
 import { CategoryModal } from './components/CategoryModal';
 import { DataBackupModal } from './components/DataBackupModal';
+import { SupportModal } from './components/SupportModal';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -61,8 +63,19 @@ export const App: React.FC = () => {
   // Modales
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   const isPanelOpen = !!selectedTask || !!selectedReminder;
+
+  // Título dinámico en la pestaña del navegador (Rekayu - [Página actual] · [Tarea o recordatorio])
+  useDocumentTitle({
+    activeNav,
+    activeView,
+    selectedTask,
+    selectedReminder,
+    tasks,
+    reminders,
+  });
 
   // Contadores para pestañas y resumen
   const counts = useMemo(() => {
@@ -178,10 +191,11 @@ export const App: React.FC = () => {
           setActiveNav(sec);
         }}
         isPanelOpen={isPanelOpen}
+        onOpenSupport={() => setIsSupportModalOpen(true)}
       />
 
-      {/* Panel fijo lateral izquierdo de tareas fijadas (solo en escritorio, en vista de tareas) */}
-      {activeNav === 'tareas' && !isPanelOpen && (
+      {/* Panel fijo lateral izquierdo de tareas fijadas (en tareas y calendario, cuando el panel de detalle no está abierto) */}
+      {(activeNav === 'tareas' || activeNav === 'calendario') && !isPanelOpen && (
         <PinnedTasksRail
           tasks={tasks}
           categories={categories}
@@ -200,9 +214,9 @@ export const App: React.FC = () => {
         key={activeNav}
         className={`w-full ${
           activeNav === 'calendario'
-            ? 'max-w-[560px] md:max-w-[860px] lg:max-w-[940px]'
-            : 'max-w-[560px]'
-        } mx-auto h-full flex flex-col px-4 sm:px-6 pt-[72px] sm:pt-8 min-h-0 animate-page-popup`}
+            ? 'max-w-[560px] md:max-w-[860px] lg:max-w-[940px] xl:ml-[280px] xl:mr-auto 2xl:mx-auto'
+            : 'max-w-[560px] mx-auto'
+        } h-full flex flex-col px-4 sm:px-6 pt-[72px] sm:pt-8 min-h-0 animate-page-popup`}
       >
         {/* 1. Cabecera y controles fijos */}
         <div className="flex-none">
@@ -286,6 +300,7 @@ export const App: React.FC = () => {
                 setSelectedTask(task);
               }}
               onToggleTask={handleToggleTask}
+              onTogglePin={togglePinTask}
               onAddTaskForDate={handleAddTaskForDate}
             />
           )}
@@ -387,6 +402,14 @@ export const App: React.FC = () => {
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         onDataRestored={handleDataRestored}
+      />
+
+      {/* Ventanita flotante de Apoyo, Donaciones e Incidencias */}
+      <SupportModal
+        activeNav={activeNav}
+        isPanelOpen={isPanelOpen}
+        isMobileOpen={isSupportModalOpen}
+        onCloseMobile={() => setIsSupportModalOpen(false)}
       />
     </div>
   );

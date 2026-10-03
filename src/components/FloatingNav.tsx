@@ -1,17 +1,19 @@
 import React from 'react';
-import { CheckSquare, Calendar, Bell, FileText, Settings } from 'lucide-react';
+import { CheckSquare, Calendar, Bell, FileText, Settings, Heart } from 'lucide-react';
 import { NavSection } from '../types';
 
 interface FloatingNavProps {
   activeSection: NavSection;
   onChangeSection: (section: NavSection) => void;
   isPanelOpen: boolean;
+  onOpenSupport?: () => void;
 }
 
 export const FloatingNav: React.FC<FloatingNavProps> = ({
   activeSection,
   onChangeSection,
   isPanelOpen,
+  onOpenSupport,
 }) => {
   const contentItems: { id: NavSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'tareas', label: 'Tareas', icon: CheckSquare },
@@ -64,23 +66,37 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
         } bg-calma-line flex-none self-center`}
       />
 
-      {/* Ajustes */}
-      <button
-        onClick={() => onChangeSection('ajustes')}
-        title="Ajustes"
-        aria-label="Ajustes"
-        className={`flex items-center justify-center transition-all duration-200 ${
-          isPanelOpen
-            ? 'w-10 h-10 rounded-xl'
-            : 'w-9 h-9 sm:w-10 sm:h-10 rounded-full'
-        } ${
-          activeSection === 'ajustes'
-            ? 'bg-calma-accent text-white shadow-xs scale-105'
-            : 'text-calma-muted hover:text-calma-ink hover:bg-calma-bg/80'
-        }`}
-      >
-        <Settings className="w-5 h-5 stroke-[2.2]" />
-      </button>
+      <div className={`flex ${isPanelOpen ? 'flex-col gap-2' : 'flex-row gap-1 sm:gap-1.5'}`}>
+        {/* Botón de apoyo (solo en móvil junto a los otros iconos del header) */}
+        {onOpenSupport && !isPanelOpen && (
+          <button
+            onClick={onOpenSupport}
+            title="Apoyar el proyecto / Contacto"
+            aria-label="Apoyar el proyecto"
+            className="sm:hidden flex items-center justify-center w-9 h-9 rounded-full text-calma-warn hover:bg-calma-warn/10 transition-all duration-200 cursor-pointer"
+          >
+            <Heart className="w-4 h-4 fill-calma-warn/25" />
+          </button>
+        )}
+
+        {/* Ajustes */}
+        <button
+          onClick={() => onChangeSection('ajustes')}
+          title="Ajustes"
+          aria-label="Ajustes"
+          className={`flex items-center justify-center transition-all duration-200 ${
+            isPanelOpen
+              ? 'w-10 h-10 rounded-xl'
+              : 'w-9 h-9 sm:w-10 sm:h-10 rounded-full'
+          } ${
+            activeSection === 'ajustes'
+              ? 'bg-calma-accent text-white shadow-xs scale-105'
+              : 'text-calma-muted hover:text-calma-ink hover:bg-calma-bg/80'
+          }`}
+        >
+          <Settings className="w-5 h-5 stroke-[2.2]" />
+        </button>
+      </div>
     </nav>
   );
 };

@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  Pin,
 } from 'lucide-react';
 import { Task, Category, Reminder } from '../types';
+import { TaskCard } from './TaskCard';
 import {
   getCalendarMonthDays,
   getMonthYearTitle,
@@ -24,6 +26,7 @@ interface CalendarPageProps {
   selectedTaskId?: string | null;
   onSelectTask: (task: Task) => void;
   onToggleTask: (id: string) => void;
+  onTogglePin?: (id: string) => void;
   onAddTaskForDate: (title: string, date: string) => void;
 }
 
@@ -34,12 +37,18 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   selectedTaskId,
   onSelectTask,
   onToggleTask,
+  onTogglePin,
   onAddTaskForDate,
 }) => {
   const todayStr = getTodayString();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDateString, setSelectedDateString] = useState(todayStr);
   const [quickTitle, setQuickTitle] = useState('');
+
+  // Tareas fijadas pendientes (para vista compacta en móvil/tablet)
+  const pinnedTasks = useMemo(() => {
+    return tasks.filter((t) => t.isPinned && t.status === 'pendiente');
+  }, [tasks]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -121,12 +130,15 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       {/* 1. Cabecera del Calendario */}
       <div className="flex items-center justify-between gap-3">
         <div>
+          <div className="mb-1 sm:mb-1.5 flex items-center gap-1.5 text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+            <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
+            <span className="font-semibold text-calma-ink">Rekayu</span>
+            <span className="text-calma-muted/40 font-light">·</span>
+            <span className="capitalize">{getMonthYearTitle(year, month)}</span>
+          </div>
           <h1 className="font-serif font-normal text-[36px] sm:text-[46px] leading-none tracking-[-0.01em] text-calma-ink m-0">
             Calendario
           </h1>
-          <p className="text-calma-muted text-[13px] sm:text-[15px] mt-1.5 m-0 capitalize">
-            {getMonthYearTitle(year, month)}
-          </p>
         </div>
 
         {/* Controles de navegación de mes */}
@@ -155,6 +167,29 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Sección destacada de tareas fijadas en móvil / tablet (igual que en Tareas) */}
+      {pinnedTasks.length > 0 && (
+        <div className="xl:hidden bg-calma-surface/60 rounded-2xl p-2.5 border border-calma-line/60">
+          <div className="flex items-center gap-1.5 px-2 py-1 text-calma-accent text-[12px] font-semibold uppercase tracking-wider mb-1">
+            <Pin className="w-3.5 h-3.5" />
+            <span>Fijadas ({pinnedTasks.length})</span>
+          </div>
+          <div className="space-y-1 px-1 py-1">
+            {pinnedTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                category={categoriesMap.get(task.categoryId)}
+                isSelected={selectedTaskId === task.id}
+                onSelect={onSelectTask}
+                onToggle={onToggleTask}
+                onTogglePin={onTogglePin}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Cuadrícula del Mes y Agenda del día lado a lado en escritorio para eliminar scroll innecesario */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
