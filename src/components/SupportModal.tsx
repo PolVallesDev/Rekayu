@@ -16,12 +16,23 @@ export const SupportModal: React.FC<SupportModalProps> = ({
   onCloseMobile,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [config, setConfig] = useState<SupportConfig>(getSupportConfig);
 
   useEffect(() => {
     setConfig(getSupportConfig());
   }, [isMobileOpen, showInfo]);
+
+  const handleContact = () => {
+    if (config.contactEmail) {
+      navigator.clipboard.writeText(config.contactEmail).catch(() => {});
+      setEmailCopied(true);
+      setCopied(false);
+      setShowInfo(false);
+      setTimeout(() => setEmailCopied(false), 2800);
+    }
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -42,10 +53,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({
     try {
       await navigator.clipboard.writeText(window.location.origin);
       setCopied(true);
+      setEmailCopied(false);
       setShowInfo(false);
       setTimeout(() => setCopied(false), 2800);
     } catch {
       setCopied(true);
+      setEmailCopied(false);
       setTimeout(() => setCopied(false), 2800);
     }
   };
@@ -62,7 +75,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
         >
           <div className="relative">
             {/* Globo/tarjeta que aparece justo encima de los botones al hacer clic en info o copiar enlace */}
-            {(showInfo || copied) && (
+            {(showInfo || copied || emailCopied) && (
               <div
                 className="absolute bottom-full left-0 mb-2.5 w-76 bg-calma-surface rounded-2xl p-4 border border-calma-line shadow-2xl animate-page-popup space-y-2.5 z-40 select-none"
                 onClick={(e) => e.stopPropagation()}
@@ -80,6 +93,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     onClick={() => {
                       setShowInfo(false);
                       setCopied(false);
+                      setEmailCopied(false);
                     }}
                     className="p-1 text-calma-muted hover:text-calma-ink rounded-lg hover:bg-calma-bg transition-colors"
                     aria-label="Cerrar mensaje"
@@ -92,6 +106,11 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   <div className="p-2.5 rounded-xl bg-calma-accent-soft text-calma-ink text-[12px] font-medium flex items-center gap-2">
                     <Check className="w-4 h-4 text-calma-accent flex-none" />
                     <span>¡Enlace copiado al portapapeles! ✨</span>
+                  </div>
+                ) : emailCopied ? (
+                  <div className="p-2.5 rounded-xl bg-calma-accent-soft text-calma-ink text-[12px] font-medium flex items-center gap-2">
+                    <Check className="w-4 h-4 text-calma-accent flex-none" />
+                    <span>¡Correo copiado al portapapeles! ✉️</span>
                   </div>
                 ) : (
                   <p className="text-[12px] text-calma-muted leading-relaxed m-0">
@@ -139,11 +158,16 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 href={`mailto:${config.contactEmail}?subject=${encodeURIComponent(
                   '[Rekayu] Feedback o Incidencia'
                 )}`}
-                title="Escribir feedback o reportar error"
+                onClick={handleContact}
+                title="Escribir feedback o reportar error (copia el correo al hacer clic)"
                 aria-label="Contacto e incidencias"
-                className="p-1.5 text-calma-muted hover:text-calma-ink hover:bg-calma-bg rounded-full transition-all"
+                className="p-1.5 text-calma-muted hover:text-calma-ink hover:bg-calma-bg rounded-full transition-all cursor-pointer"
               >
-                <MessageSquare className="w-4 h-4" />
+                {emailCopied ? (
+                  <Check className="w-4 h-4 text-calma-accent" />
+                ) : (
+                  <MessageSquare className="w-4 h-4" />
+                )}
               </a>
 
               {/* Botón Info / Corazón (muestra el texto justo encima) */}
@@ -151,6 +175,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 type="button"
                 onClick={() => {
                   setCopied(false);
+                  setEmailCopied(false);
                   setShowInfo(!showInfo);
                 }}
                 title="Sobre el proyecto independiente"
@@ -263,21 +288,32 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 href={`mailto:${config.contactEmail}?subject=${encodeURIComponent(
                   '[Rekayu] Feedback o Incidencia'
                 )}`}
-                className="flex items-center justify-between p-3 rounded-xl bg-calma-bg/60 hover:bg-calma-bg border border-calma-line text-calma-ink transition-all group"
+                onClick={handleContact}
+                className="flex items-center justify-between p-3 rounded-xl bg-calma-bg/60 hover:bg-calma-bg border border-calma-line text-calma-ink transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-calma-surface flex items-center justify-center text-calma-ink border border-calma-line flex-none">
-                    <MessageSquare className="w-4 h-4" />
+                    {emailCopied ? (
+                      <Check className="w-4 h-4 text-calma-accent" />
+                    ) : (
+                      <MessageSquare className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="text-left">
                     <p className="text-[13px] font-medium m-0 leading-tight">
                       Contacto e incidencias
                     </p>
-                    <p className="text-[11px] text-calma-muted m-0 mt-0.5">Reportar un error o duda</p>
+                    <p className="text-[11px] text-calma-muted m-0 mt-0.5">
+                      {emailCopied ? '¡Correo copiado al portapapeles! ✉️' : 'Reportar un error o duda'}
+                    </p>
                   </div>
                 </div>
-                <span className="text-[11.5px] text-calma-muted group-hover:text-calma-ink transition-colors">
-                  Escribir
+                <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-md border shadow-xs transition-colors ${
+                  emailCopied
+                    ? 'text-calma-accent bg-calma-surface border-calma-line'
+                    : 'text-calma-muted group-hover:text-calma-ink border-transparent'
+                }`}>
+                  {emailCopied ? '¡Copiado!' : 'Escribir'}
                 </span>
               </a>
             </div>
