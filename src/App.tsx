@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ViewType, Task, Reminder } from './types';
+import { ViewType, Task, Reminder, Priority } from './types';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTasks } from './hooks/useTasks';
 import { useCategories } from './hooks/useCategories';
@@ -57,6 +57,7 @@ export const App: React.FC = () => {
   // Sub-vista de tareas (Hoy, Próximos, Hechas)
   const [activeView, setActiveView] = useState<ViewType>('hoy');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<Priority | null>(null);
 
   // Tarea o recordatorio seleccionado para el panel lateral
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -199,6 +200,7 @@ export const App: React.FC = () => {
     setActiveNav('tareas');
     setActiveView('hoy');
     setSelectedCategoryId(null);
+    setSelectedPriority(null);
     setSelectedTask(null);
     setSelectedReminder(null);
   };
@@ -280,11 +282,13 @@ export const App: React.FC = () => {
                 counts={counts}
               />
 
-              {/* Filtro deslizante de Categorías */}
+              {/* Filtro de Categorías y selector de Prioridad */}
               <CategoryFilter
                 categories={categories}
                 selectedCategoryId={selectedCategoryId}
+                selectedPriority={selectedPriority}
                 onSelectCategory={setSelectedCategoryId}
+                onSelectPriority={setSelectedPriority}
                 onOpenNewCategory={() => setIsCategoryModalOpen(true)}
               />
             </>
@@ -316,6 +320,7 @@ export const App: React.FC = () => {
                 categories={categories}
                 activeView={activeView}
                 selectedCategoryId={selectedCategoryId}
+                selectedPriority={selectedPriority}
                 selectedTaskId={selectedTask?.id}
                 onSelectTask={(task) => {
                   setSelectedReminder(null);

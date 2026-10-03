@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Task, Category, ViewType } from '../types';
+import { Task, Category, ViewType, Priority } from '../types';
 import { TaskCard } from './TaskCard';
 import { isToday, isOverdue, getDaysRemaining, formatDateFriendly } from '../lib/dates';
 import { Pin } from 'lucide-react';
@@ -9,6 +9,7 @@ interface TaskListProps {
   categories: Category[];
   activeView: ViewType;
   selectedCategoryId: string | null;
+  selectedPriority?: Priority | null;
   selectedTaskId?: string | null;
   onSelectTask: (task: Task) => void;
   onToggleTask: (id: string) => void;
@@ -23,6 +24,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   categories,
   activeView,
   selectedCategoryId,
+  selectedPriority = null,
   selectedTaskId,
   onSelectTask,
   onToggleTask,
@@ -36,23 +38,29 @@ export const TaskList: React.FC<TaskListProps> = ({
     return map;
   }, [categories]);
 
-  // Filtrado por categoría
+  // Filtrado por categoría y prioridad
   const filteredTasks = useMemo(() => {
-    if (!selectedCategoryId) return tasks;
-    return tasks.filter((t) => t.categoryId === selectedCategoryId);
-  }, [tasks, selectedCategoryId]);
+    return tasks.filter((t) => {
+      if (selectedCategoryId && t.categoryId !== selectedCategoryId) return false;
+      if (selectedPriority && t.priority !== selectedPriority) return false;
+      return true;
+    });
+  }, [tasks, selectedCategoryId, selectedPriority]);
 
   // Render según vista activa
   if (activeView === 'hechas') {
     const doneTasks = filteredTasks.filter((t) => t.status === 'hecha');
     if (doneTasks.length === 0) {
+      const isFiltered = !!(selectedCategoryId || selectedPriority);
       return (
         <div className="text-center py-14 px-4 select-none">
           <b className="font-serif font-normal text-[30px] sm:text-[34px] text-calma-ink block mb-1">
-            Aún no hay nada
+            {isFiltered ? 'Sin tareas coincidentes' : 'Aún no hay nada'}
           </b>
           <p className="text-calma-muted text-[15px] m-0">
-            Las tareas que completes aparecerán aquí.
+            {isFiltered
+              ? 'No hay tareas completadas con los filtros seleccionados.'
+              : 'Las tareas que completes aparecerán aquí.'}
           </p>
         </div>
       );
@@ -83,13 +91,16 @@ export const TaskList: React.FC<TaskListProps> = ({
     );
 
     if (pendingFuture.length === 0) {
+      const isFiltered = !!(selectedCategoryId || selectedPriority);
       return (
         <div className="text-center py-14 px-4 select-none">
           <b className="font-serif font-normal text-[30px] sm:text-[34px] text-calma-ink block mb-1">
-            Nada a la vista
+            {isFiltered ? 'Sin tareas coincidentes' : 'Nada a la vista'}
           </b>
           <p className="text-calma-muted text-[15px] m-0">
-            No tienes tareas pendientes próximas programadas.
+            {isFiltered
+              ? 'No hay tareas programadas con los filtros seleccionados.'
+              : 'No tienes tareas pendientes próximas programadas.'}
           </p>
         </div>
       );
@@ -153,13 +164,16 @@ export const TaskList: React.FC<TaskListProps> = ({
   const otherTasks = activeView === 'hoy' ? pendingTasks.filter((t) => !t.isPinned) : pendingTasks;
 
   if (pendingTasks.length === 0) {
+    const isFiltered = !!(selectedCategoryId || selectedPriority);
     return (
       <div className="text-center py-14 px-4 select-none">
         <b className="font-serif font-normal text-[30px] sm:text-[34px] text-calma-ink block mb-1">
-          Todo al día
+          {isFiltered ? 'Sin tareas coincidentes' : 'Todo al día'}
         </b>
         <p className="text-calma-muted text-[15px] m-0">
-          Disfruta del resto del día.
+          {isFiltered
+            ? 'No hay tareas pendientes con los filtros seleccionados.'
+            : 'Disfruta del resto del día.'}
         </p>
       </div>
     );
