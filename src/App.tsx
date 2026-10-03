@@ -178,6 +178,15 @@ export const App: React.FC = () => {
     setSelectedReminder(null);
   };
 
+  // Navegar al inicio (Tareas -> Hoy) y cerrar paneles abiertos
+  const handleGoHome = () => {
+    setActiveNav('tareas');
+    setActiveView('hoy');
+    setSelectedCategoryId(null);
+    setSelectedTask(null);
+    setSelectedReminder(null);
+  };
+
   return (
     <div
       className={`h-screen h-[100dvh] overflow-hidden bg-calma-bg text-calma-ink font-sans flex flex-col transition-all duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${
@@ -228,6 +237,7 @@ export const App: React.FC = () => {
               pendingTasksCount={counts.pendingTasks}
               pendingRemindersCount={counts.pendingReminders}
               notesCount={counts.notesCount}
+              onGoHome={handleGoHome}
             />
           )}
 
@@ -302,6 +312,7 @@ export const App: React.FC = () => {
               onToggleTask={handleToggleTask}
               onTogglePin={togglePinTask}
               onAddTaskForDate={handleAddTaskForDate}
+              onGoHome={handleGoHome}
             />
           )}
 
@@ -343,6 +354,7 @@ export const App: React.FC = () => {
               categories={categories}
               onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
               onDataRestored={handleDataRestored}
+              onGoHome={handleGoHome}
             />
           )}
         </div>

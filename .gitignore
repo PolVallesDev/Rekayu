@@ -28,3 +28,4 @@ dist-ssr
 AGENTS.md
 CONTEXT.md
 .agents/
+rekayu_backup*.json

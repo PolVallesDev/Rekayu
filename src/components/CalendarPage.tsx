@@ -28,6 +28,7 @@ interface CalendarPageProps {
   onToggleTask: (id: string) => void;
   onTogglePin?: (id: string) => void;
   onAddTaskForDate: (title: string, date: string) => void;
+  onGoHome?: () => void;
 }
 
 export const CalendarPage: React.FC<CalendarPageProps> = ({
@@ -39,6 +40,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   onToggleTask,
   onTogglePin,
   onAddTaskForDate,
+  onGoHome,
 }) => {
   const todayStr = getTodayString();
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -131,8 +133,15 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="mb-1 sm:mb-1.5 flex items-center gap-1.5 text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-            <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
-            <span className="font-semibold text-calma-ink">Rekayu</span>
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="flex items-center gap-1.5 text-calma-ink hover:opacity-80 transition-opacity cursor-pointer flex-none focus:outline-none"
+              title="Ir al inicio"
+            >
+              <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
+              <span className="font-semibold text-calma-ink">Rekayu</span>
+            </button>
             <span className="text-calma-muted/40 font-light">·</span>
             <span className="capitalize">{getMonthYearTitle(year, month)}</span>
           </div>

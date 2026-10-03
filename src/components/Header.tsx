@@ -8,6 +8,7 @@ interface HeaderProps {
   pendingTasksCount: number;
   pendingRemindersCount: number;
   notesCount: number;
+  onGoHome?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   pendingTasksCount,
   pendingRemindersCount,
   notesCount,
+  onGoHome,
 }) => {
   const todayFormatted = getTodayFormattedLong();
 
@@ -49,8 +51,15 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="mb-3 select-none">
       {/* 1. Fila superior: Marca Rekayu + Fecha */}
       <div className="mb-1 sm:mb-2 flex items-center gap-1.5 text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-        <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
-        <span className="font-semibold text-calma-ink">Rekayu</span>
+        <button
+          type="button"
+          onClick={onGoHome}
+          className="flex items-center gap-1.5 text-calma-ink hover:opacity-80 transition-opacity cursor-pointer flex-none focus:outline-none"
+          title="Ir al inicio"
+        >
+          <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
+          <span className="font-semibold text-calma-ink">Rekayu</span>
+        </button>
         <span className="text-calma-muted/40 font-light">·</span>
         <span className="capitalize overflow-hidden text-ellipsis">{todayFormatted}</span>
       </div>

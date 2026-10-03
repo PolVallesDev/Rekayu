@@ -29,6 +29,7 @@ interface SettingsPageProps {
   categories: Category[];
   onOpenCategoryModal: () => void;
   onDataRestored: () => void;
+  onGoHome?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -37,6 +38,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   categories,
   onOpenCategoryModal,
   onDataRestored,
+  onGoHome,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
@@ -90,8 +92,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Encabezado de la página */}
       <div>
         <div className="mb-1 sm:mb-1.5 flex items-center gap-1.5 text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-          <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
-          <span className="font-semibold text-calma-ink">Rekayu</span>
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="flex items-center gap-1.5 text-calma-ink hover:opacity-80 transition-opacity cursor-pointer flex-none focus:outline-none"
+            title="Ir al inicio"
+          >
+            <img src="/icons/IcoRekayu.ico" alt="Logo Rekayu" className="w-4 h-4 rounded-sm object-contain flex-none" />
+            <span className="font-semibold text-calma-ink">Rekayu</span>
+          </button>
           <span className="text-calma-muted/40 font-light">·</span>
           <span>Preferencias</span>
         </div>
