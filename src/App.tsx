@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ViewType, Task, Reminder } from './types';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTasks } from './hooks/useTasks';
@@ -27,6 +27,7 @@ import { NotesSection } from './components/NotesSection';
 import { CategoryModal } from './components/CategoryModal';
 import { DataBackupModal } from './components/DataBackupModal';
 import { SupportModal } from './components/SupportModal';
+import { GlobalSearchModal } from './components/GlobalSearchModal';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -65,6 +66,20 @@ export const App: React.FC = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Atajo universal Cmd+K / Ctrl+K para abrir la paleta de búsqueda global
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const isPanelOpen = !!selectedTask || !!selectedReminder;
 
@@ -215,6 +230,7 @@ export const App: React.FC = () => {
         }}
         isPanelOpen={isPanelOpen}
         onOpenSupport={() => setIsSupportModalOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
       />
 
       {/* Panel fijo lateral izquierdo de tareas fijadas (en tareas y calendario, cuando el panel de detalle no está abierto) */}
@@ -437,6 +453,31 @@ export const App: React.FC = () => {
         isPanelOpen={isPanelOpen}
         isMobileOpen={isSupportModalOpen}
         onCloseMobile={() => setIsSupportModalOpen(false)}
+      />
+
+      {/* Paleta / Buscador Global Cmd+K / Ctrl+K */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        tasks={tasks}
+        reminders={reminders}
+        notes={notes}
+        categories={categories}
+        onSelectTask={(task) => {
+          setActiveNav('tareas');
+          setSelectedReminder(null);
+          setSelectedTask(task);
+        }}
+        onSelectReminder={(reminder) => {
+          setActiveNav('recordatorios');
+          setSelectedTask(null);
+          setSelectedReminder(reminder);
+        }}
+        onNavigateSection={(section) => {
+          setActiveNav(section);
+          setSelectedTask(null);
+          setSelectedReminder(null);
+        }}
       />
     </div>
   );

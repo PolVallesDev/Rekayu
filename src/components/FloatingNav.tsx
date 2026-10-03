@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Calendar, Bell, FileText, Settings, Heart } from 'lucide-react';
+import { CheckSquare, Calendar, Bell, FileText, Settings, Heart, Search } from 'lucide-react';
 import { NavSection } from '../types';
 
 interface FloatingNavProps {
@@ -7,6 +7,7 @@ interface FloatingNavProps {
   onChangeSection: (section: NavSection) => void;
   isPanelOpen: boolean;
   onOpenSupport?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export const FloatingNav: React.FC<FloatingNavProps> = ({
@@ -14,6 +15,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
   onChangeSection,
   isPanelOpen,
   onOpenSupport,
+  onOpenSearch,
 }) => {
   const contentItems: { id: NavSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'tareas', label: 'Tareas', icon: CheckSquare },
@@ -67,6 +69,22 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
       />
 
       <div className={`flex ${isPanelOpen ? 'flex-col gap-2' : 'flex-row gap-1 sm:gap-1.5'}`}>
+        {/* Botón de búsqueda global */}
+        {onOpenSearch && (
+          <button
+            onClick={onOpenSearch}
+            title="Buscar (Ctrl + K)"
+            aria-label="Buscar tareas y notas"
+            className={`flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation ${
+              isPanelOpen
+                ? 'w-10 h-10 rounded-xl'
+                : 'w-9 h-9 sm:w-10 sm:h-10 rounded-full'
+            } text-calma-muted hover:text-calma-ink hover:bg-calma-bg/80`}
+          >
+            <Search className="w-5 h-5 stroke-[2.2]" />
+          </button>
+        )}
+
         {/* Botón de apoyo (solo en móvil junto a los otros iconos del header) */}
         {onOpenSupport && !isPanelOpen && (
           <button
