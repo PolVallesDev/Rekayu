@@ -9,6 +9,7 @@ import {
   Clock,
   Pin,
   Upload,
+  Download,
   X,
 } from 'lucide-react';
 import { Task, Category, Reminder } from '../types';
@@ -21,6 +22,7 @@ import {
   formatDateLongSpanish,
 } from '../lib/dates';
 import { parseIcsContent, ParsedIcsEvent } from '../lib/icalParser';
+import { exportTasksToIcs } from '../lib/icalExporter';
 import { IcsImportModal } from './IcsImportModal';
 
 interface CalendarPageProps {
@@ -169,6 +171,17 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     );
   };
 
+  const handleExportIcs = () => {
+    const result = exportTasksToIcs(tasks, categories);
+    if (result.exportedCount === 0) {
+      setImportFeedback('No tienes tareas con fecha límite asignada para exportar.');
+    } else {
+      setImportFeedback(
+        `Se ${result.exportedCount === 1 ? 'ha exportado 1 tarea' : `han exportado ${result.exportedCount} tareas`} a ${result.filename}.`
+      );
+    }
+  };
+
   const isCurrentMonthViewing =
     new Date().getFullYear() === year && new Date().getMonth() === month;
 
@@ -195,8 +208,19 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           </h1>
         </div>
 
-        {/* Acciones de cabecera: Importar .ics + Controles de navegación */}
+        {/* Acciones de cabecera: Importar/Exportar .ics + Controles de navegación */}
         <div className="flex items-center gap-2">
+          {/* Botón Exportar .ics */}
+          <button
+            type="button"
+            onClick={handleExportIcs}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-calma-muted hover:text-calma-ink bg-calma-surface border border-calma-line hover:border-calma-accent/40 transition-all shadow-xs cursor-pointer"
+            title="Exportar tareas y exámenes a archivo .ics (Apple Calendar, Google, etc.)"
+          >
+            <Download className="w-3.5 h-3.5 text-calma-accent" />
+            <span className="hidden sm:inline">Exportar .ics</span>
+          </button>
+
           {/* Botón Importar .ics */}
           <button
             type="button"
