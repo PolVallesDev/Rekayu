@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Task, Priority, TaskStatus, Subtask, TaskLink } from '../types';
-import { getTasks, saveTasks } from '../lib/storage';
+import { getTasks, saveTasks, deleteRemoteTask } from '../lib/storage';
 
 export interface CreateTaskInput {
   title: string;
@@ -70,6 +70,7 @@ export const useTasks = () => {
     const updated = tasks.filter((t) => t.id !== id);
     saveTasks(updated);
     setTasks(updated);
+    deleteRemoteTask(id);
   }, [tasks]);
 
   // Recargar tareas desde el almacenamiento (ej. tras importar JSON)

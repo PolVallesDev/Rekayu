@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Note } from '../types';
-import { getNotes, saveNotes } from '../lib/storage';
+import { getNotes, saveNotes, deleteRemoteNote } from '../lib/storage';
 
 export const useNotes = () => {
   const [notes, setNotes] = useState<Note[]>(() => getNotes());
@@ -53,6 +53,7 @@ export const useNotes = () => {
       const updated = notes.filter((n) => n.id !== id);
       saveNotes(updated);
       setNotes(updated);
+      deleteRemoteNote(id);
     },
     [notes]
   );

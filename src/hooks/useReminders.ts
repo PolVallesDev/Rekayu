@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Reminder } from '../types';
-import { getReminders, saveReminders } from '../lib/storage';
+import { getReminders, saveReminders, deleteRemoteReminder } from '../lib/storage';
 
 export const useReminders = () => {
   const [reminders, setReminders] = useState<Reminder[]>(() => getReminders());
@@ -51,6 +51,7 @@ export const useReminders = () => {
       const updated = reminders.filter((r) => r.id !== id);
       saveReminders(updated);
       setReminders(updated);
+      deleteRemoteReminder(id);
     },
     [reminders]
   );
