@@ -32,7 +32,7 @@ export const ViewTabs: React.FC<ViewTabsProps> = ({
             role="tab"
             aria-selected={isActive}
             onClick={() => onChangeView(tab.id)}
-            className={`pb-3 text-[15px] font-medium transition-colors border-b-2 -mb-[1px] ${
+            className={`pb-3 text-[15px] font-medium transition-colors border-b-2 -mb-[1px] cursor-pointer touch-manipulation ${
               isActive
                 ? 'text-calma-ink border-calma-accent font-semibold'
                 : 'text-calma-muted border-transparent hover:text-calma-ink'

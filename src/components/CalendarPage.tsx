@@ -220,23 +220,26 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           <div className="flex items-center gap-1.5 bg-calma-surface p-1 rounded-full border border-calma-line shadow-xs">
             {!isCurrentMonthViewing && (
               <button
+                type="button"
                 onClick={handleGoToday}
-                className="text-[12px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-bg rounded-full transition-colors"
+                className="text-[12px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-bg rounded-full transition-colors cursor-pointer touch-manipulation"
               >
                 Hoy
               </button>
             )}
             <button
+              type="button"
               onClick={handlePrevMonth}
               aria-label="Mes anterior"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors cursor-pointer touch-manipulation"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={handleNextMonth}
               aria-label="Mes siguiente"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors cursor-pointer touch-manipulation"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
