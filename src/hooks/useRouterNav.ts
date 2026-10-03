@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NavSection } from '../types';
 
-const VALID_ROUTES: NavSection[] = ['tareas', 'calendario', 'recordatorios', 'notas', 'ajustes'];
+const VALID_ROUTES: NavSection[] = ['tareas', 'calendario', 'recordatorios', 'notas', 'ajustes', 'cuenta'];
 
 /**
  * Hook para enrutamiento nativo con URLs reales (/tareas, /calendario, /recordatorios, /notas, /ajustes)

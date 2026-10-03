@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Cloud, Lock, Mail, Check, AlertCircle, ArrowRight } from 'lucide-react';
+import { X, Cloud, Lock, Mail, Check, AlertCircle, ArrowRight, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
@@ -11,6 +11,7 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { isConfigured, signIn, signUp } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +24,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     e.preventDefault();
     setErrorMessage(null);
     setInfoMessage(null);
+
+    if (isRegistering && !fullName.trim()) {
+      setErrorMessage('Por favor, introduce tu nombre.');
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setErrorMessage('Por favor, introduce tu correo y contraseña.');
@@ -37,9 +43,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setLoading(true);
     try {
       if (isRegistering) {
-        await signUp(email.trim(), password);
+        await signUp(email.trim(), password, fullName.trim());
         setInfoMessage(
-          '¡Cuenta creada! Si tu proyecto tiene activada la confirmación por correo, revisa tu bandeja de entrada para verificar tu cuenta.'
+          'Revisa tu bandeja de entrada para verificar tu cuenta.'
         );
         setTimeout(() => {
           if (onSuccess) onSuccess();
@@ -121,6 +127,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </div>
             )}
 
+            {/* Nombre completo (solo registro) */}
+            {isRegistering && (
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-medium text-calma-muted">
+                  Nombre completo
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Tu nombre y apellido"
+                    required
+                    autoFocus
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-calma-bg border border-calma-line rounded-xl text-[14.5px] text-calma-ink placeholder:text-calma-muted/60 focus:outline-none focus:border-calma-accent focus:ring-1 focus:ring-calma-accent transition-all"
+                  />
+                  <UserIcon className="w-4 h-4 text-calma-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            )}
+
             {/* Email */}
             <div className="space-y-1">
               <label className="block text-[12.5px] font-medium text-calma-muted">
@@ -133,7 +160,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ejemplo@correo.com"
                   required
-                  autoFocus
+                  autoFocus={!isRegistering}
                   className="w-full pl-9 pr-3.5 py-2.5 bg-calma-bg border border-calma-line rounded-xl text-[14.5px] text-calma-ink placeholder:text-calma-muted/60 focus:outline-none focus:border-calma-accent focus:ring-1 focus:ring-calma-accent transition-all"
                 />
                 <Mail className="w-4 h-4 text-calma-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />

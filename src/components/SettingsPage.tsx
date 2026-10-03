@@ -14,8 +14,7 @@ import {
   Heart,
   Coffee,
   Cloud,
-  RefreshCw,
-  LogOut,
+  ArrowRight,
 } from 'lucide-react';
 import { Category } from '../types';
 import {
@@ -26,7 +25,6 @@ import {
   SupportConfig,
 } from '../lib/storage';
 import { useAuth } from '../hooks/useAuth';
-import { AuthModal } from './AuthModal';
 
 interface SettingsPageProps {
   isDark: boolean;
@@ -35,6 +33,7 @@ interface SettingsPageProps {
   onOpenCategoryModal: () => void;
   onDataRestored: () => void;
   onGoHome?: () => void;
+  onNavigateToAccount?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -44,6 +43,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onOpenCategoryModal,
   onDataRestored,
   onGoHome,
+  onNavigateToAccount,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
@@ -52,28 +52,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [supportConfig, setSupportConfig] = useState<SupportConfig>(getSupportConfig);
 
-  const { user, isConfigured, signOut, syncWithCloud } = useAuth(onDataRestored);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const handleSyncCloud = async () => {
-    setIsSyncing(true);
-    setSyncFeedback(null);
-    const res = await syncWithCloud();
-    setSyncFeedback(res.message);
-    setIsSyncing(false);
-    if (res.success) {
-      onDataRestored();
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setSyncFeedback('Sesión cerrada correctamente.');
-    } catch {}
-  };
+  const { user } = useAuth(onDataRestored);
 
   const handleToggleBuyCoffee = () => {
     const nextVal = !supportConfig.enableBuyCoffee;
@@ -230,8 +209,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </section>
 
-      {/* 3. Bloque: Sincronización en la Nube (Supabase) */}
-      <section className="bg-calma-surface rounded-2xl p-5 border border-calma-line shadow-xs space-y-4">
+      {/* 3. Bloque: Sincronización en la Nube y Perfil */}
+      <section className="bg-calma-surface rounded-2xl p-5 border border-calma-line shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cloud className="w-4 h-4 text-calma-accent" />
@@ -239,87 +218,45 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               Sincronización en la Nube
             </h2>
           </div>
-          {user && (
+          {user ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Sincronizado
+              Sincronización automática activa
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-calma-bg border border-calma-line text-calma-muted">
+              Modo Local
             </span>
           )}
         </div>
 
         <p className="text-[13px] text-calma-muted leading-relaxed m-0">
-          Sincroniza tus tareas, categorías, notas y recordatorios en tiempo real entre tu iPhone, iPad y ordenador de forma privada.
+          La app revisa y sincroniza automáticamente tus tareas, categorías, notas y recordatorios en segundo plano con Supabase.
         </p>
 
-        {syncFeedback && (
-          <div className="p-3 rounded-xl bg-calma-accent-soft text-calma-ink text-[12.5px] font-medium flex items-center gap-2 border border-calma-accent/30 animate-in fade-in duration-150">
-            <CheckCircle className="w-4 h-4 text-calma-accent flex-none" />
-            <span>{syncFeedback}</span>
-          </div>
-        )}
-
-        {!isConfigured ? (
-          <div className="p-3.5 bg-calma-bg/60 rounded-xl border border-calma-line flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-calma-warn flex-none mt-0.5" />
-            <p className="text-[12.5px] text-calma-muted leading-relaxed m-0">
-              Falta configurar tu clave en <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px] text-calma-ink">.env.local</code>. Añade <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px] text-calma-ink">VITE_SUPABASE_ANON_KEY</code> con el valor de tu panel de Supabase.
+        <div className="p-3.5 bg-calma-bg/60 rounded-xl border border-calma-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-[13.5px] font-medium text-calma-ink m-0 leading-tight">
+              {user ? user.email : 'Modo local sin cuenta'}
+            </p>
+            <p className="text-[11.5px] text-calma-muted m-0 mt-0.5">
+              {user
+                ? 'Conectado a tu cuenta de Supabase'
+                : 'Tus datos se guardan exclusivamente en este navegador'}
             </p>
           </div>
-        ) : user ? (
-          <div className="space-y-3 pt-1">
-            <div className="p-3.5 bg-calma-bg/60 rounded-xl border border-calma-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p className="text-[13.5px] font-medium text-calma-ink m-0 leading-tight">
-                  {user.email}
-                </p>
-                <p className="text-[11.5px] text-calma-muted m-0 mt-0.5">
-                  Conectado a tu base de datos Supabase
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSyncCloud}
-                  disabled={isSyncing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-calma-surface border border-calma-line hover:border-calma-accent text-calma-ink text-[12px] font-medium transition-all shadow-xs disabled:opacity-50 cursor-pointer"
-                  title="Sincronizar cambios ahora"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-calma-accent ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-calma-surface border border-calma-line hover:border-calma-warn text-calma-muted hover:text-calma-warn text-[12px] font-medium transition-all cursor-pointer"
-                  title="Cerrar sesión"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Salir</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 bg-calma-bg/60 rounded-xl border border-calma-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[13.5px] font-medium text-calma-ink m-0 leading-tight">
-                Accede a tu cuenta de Rekayu
-              </p>
-              <p className="text-[12px] text-calma-muted m-0 mt-0.5">
-                Inicia sesión o regístrate para activar la sincronización automática.
-              </p>
-            </div>
+          {onNavigateToAccount && (
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="px-4 py-2 bg-calma-accent text-white font-medium text-[13px] rounded-xl hover:opacity-95 shadow-xs transition-all cursor-pointer flex-none text-center"
+              onClick={onNavigateToAccount}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-calma-surface border border-calma-line hover:border-calma-accent text-calma-ink text-[12.5px] font-medium transition-all shadow-xs cursor-pointer flex-none"
             >
-              Iniciar sesión / Registrarse
+              <span>Gestionar en Mi Perfil</span>
+              <ArrowRight className="w-3.5 h-3.5 text-calma-muted" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       {/* 4. Bloque: Almacenamiento y Copia de Seguridad */}
@@ -424,15 +361,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
         </div>
       </section>
-
-      {/* Modal de Autenticación con Supabase */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={() => {
-          onDataRestored();
-        }}
-      />
     </div>
   );
 };

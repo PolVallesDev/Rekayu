@@ -1,13 +1,7 @@
 // Capa de persistencia centralizada (Local-First: localStorage con sincronización en Supabase)
 import { AppData, Category, Task, Note, Reminder } from '../types';
 import { getTodayString } from './dates';
-import {
-  supabase,
-  taskToDb,
-  categoryToDb,
-  reminderToDb,
-  noteToDb,
-} from './supabase';
+import { supabase, pushAllLocalDataToSupabase } from './supabase';
 
 const STORAGE_KEY = 'rekayu_app_data_v1';
 
@@ -232,83 +226,83 @@ export const saveAppData = (data: AppData): void => {
 // SINCRONIZACIÓN EN SEGUNDO PLANO CON SUPABASE
 // ==========================================
 
-const syncTaskChanges = async (tasks: Task[]) => {
-  if (!supabase) return;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const dbTasks = tasks.map((t) => taskToDb(t, user.id));
-    if (dbTasks.length > 0) {
-      await supabase.from('tasks').upsert(dbTasks);
-    }
-  } catch {}
-};
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-const syncCategoryChanges = async (categories: Category[]) => {
-  if (!supabase) return;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const dbCats = categories.map((c) => categoryToDb(c, user.id));
-    if (dbCats.length > 0) {
-      await supabase.from('categories').upsert(dbCats);
-    }
-  } catch {}
-};
+const scheduleBackgroundSync = () => {
+  const client = supabase;
+  if (!client) return;
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
 
-const syncReminderChanges = async (reminders: Reminder[]) => {
-  if (!supabase) return;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const dbRems = reminders.map((r) => reminderToDb(r, user.id));
-    if (dbRems.length > 0) {
-      await supabase.from('reminders').upsert(dbRems);
-    }
-  } catch {}
-};
+  syncDebounceTimer = setTimeout(async () => {
+    try {
+      // Usar getSession para no provocar errores de red si no hay sesión
+      const {
+        data: { session },
+      } = await client.auth.getSession();
+      const user = session?.user;
+      if (!user) return; // Modo local: cero peticiones de red
 
-const syncNoteChanges = async (notes: Note[]) => {
-  if (!supabase) return;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const dbNotes = notes.map((n) => noteToDb(n, user.id));
-    if (dbNotes.length > 0) {
-      await supabase.from('notes').upsert(dbNotes);
+      const current = getAppData();
+      await pushAllLocalDataToSupabase(current, user.id);
+    } catch {
+      // Ignorar fallos de red silenciosamente (Local-First resiliente)
     }
-  } catch {}
+  }, 1200);
 };
 
 export const deleteRemoteTask = async (id: string) => {
-  if (!supabase) return;
+  const client = supabase;
+  if (!client) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id);
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    const user = session?.user;
+    if (user) {
+      await client.from('tasks').delete().eq('id', id).eq('user_id', user.id);
+    }
   } catch {}
 };
 
 export const deleteRemoteCategory = async (id: string) => {
-  if (!supabase) return;
+  const client = supabase;
+  if (!client) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('categories').delete().eq('id', id).eq('user_id', user.id);
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    const user = session?.user;
+    if (user) {
+      await client.from('categories').delete().eq('id', id).eq('user_id', user.id);
+    }
   } catch {}
 };
 
 export const deleteRemoteReminder = async (id: string) => {
-  if (!supabase) return;
+  const client = supabase;
+  if (!client) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('reminders').delete().eq('id', id).eq('user_id', user.id);
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    const user = session?.user;
+    if (user) {
+      await client.from('reminders').delete().eq('id', id).eq('user_id', user.id);
+    }
   } catch {}
 };
 
 export const deleteRemoteNote = async (id: string) => {
-  if (!supabase) return;
+  const client = supabase;
+  if (!client) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('notes').delete().eq('id', id).eq('user_id', user.id);
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    const user = session?.user;
+    if (user) {
+      await client.from('notes').delete().eq('id', id).eq('user_id', user.id);
+    }
   } catch {}
 };
 
@@ -323,7 +317,7 @@ export const saveTasks = (tasks: Task[]): void => {
   const current = getAppData();
   current.tasks = tasks;
   saveAppData(current);
-  syncTaskChanges(tasks);
+  scheduleBackgroundSync();
 };
 
 /**
@@ -335,7 +329,7 @@ export const batchAddTasks = (newTasks: Task[]): void => {
   const uniqueNew = newTasks.filter((t) => !existingIds.has(t.id));
   current.tasks = [...uniqueNew, ...current.tasks];
   saveAppData(current);
-  syncTaskChanges(current.tasks);
+  scheduleBackgroundSync();
 };
 
 /**
@@ -349,7 +343,7 @@ export const saveCategories = (categories: Category[]): void => {
   const current = getAppData();
   current.categories = categories;
   saveAppData(current);
-  syncCategoryChanges(categories);
+  scheduleBackgroundSync();
 };
 
 /**
@@ -363,7 +357,7 @@ export const saveNotes = (notes: Note[]): void => {
   const current = getAppData();
   current.notes = notes;
   saveAppData(current);
-  syncNoteChanges(notes);
+  scheduleBackgroundSync();
 };
 
 /**
@@ -377,7 +371,7 @@ export const saveReminders = (reminders: Reminder[]): void => {
   const current = getAppData();
   current.reminders = reminders;
   saveAppData(current);
-  syncReminderChanges(reminders);
+  scheduleBackgroundSync();
 };
 
 /**

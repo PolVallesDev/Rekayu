@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Calendar, Bell, FileText, Settings, Heart, Search } from 'lucide-react';
+import { CheckSquare, Calendar, Bell, FileText, Settings, Heart, Search, User } from 'lucide-react';
 import { NavSection } from '../types';
 
 interface FloatingNavProps {
@@ -96,6 +96,24 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
             <Heart className="w-4 h-4 fill-calma-warn/25" />
           </button>
         )}
+
+        {/* Perfil / Cuenta */}
+        <button
+          onClick={() => onChangeSection('cuenta')}
+          title="Mi Perfil / Cuenta"
+          aria-label="Mi Perfil / Cuenta"
+          className={`flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation ${
+            isPanelOpen
+              ? 'w-10 h-10 rounded-xl'
+              : 'w-9 h-9 sm:w-10 sm:h-10 rounded-full'
+          } ${
+            activeSection === 'cuenta'
+              ? 'bg-calma-accent text-white shadow-xs scale-105'
+              : 'text-calma-muted hover:text-calma-ink hover:bg-calma-bg/80'
+          }`}
+        >
+          <User className="w-5 h-5 stroke-[2.2]" />
+        </button>
 
         {/* Ajustes */}
         <button

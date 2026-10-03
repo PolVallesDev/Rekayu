@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ViewType, Task, Reminder, Priority } from './types';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTasks } from './hooks/useTasks';
@@ -28,6 +28,9 @@ import { CategoryModal } from './components/CategoryModal';
 import { DataBackupModal } from './components/DataBackupModal';
 import { SupportModal } from './components/SupportModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
+import { AccountPage } from './components/AccountPage';
+import { WelcomeModal } from './components/WelcomeModal';
+import { AuthModal } from './components/AuthModal';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -68,6 +71,20 @@ export const App: React.FC = () => {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isGlobalAuthModalOpen, setIsGlobalAuthModalOpen] = useState(false);
+
+  // Comprobar si es la primera visita para mostrar modal de bienvenida
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('rekayu_welcome_dismissed');
+      if (!dismissed) {
+        setIsWelcomeModalOpen(true);
+      }
+    } catch {
+      // Ignorar si el almacenamiento local está restringido
+    }
+  }, []);
 
   // Atajo universal Cmd+K / Ctrl+K para abrir la paleta de búsqueda global
   useEffect(() => {
@@ -186,14 +203,14 @@ export const App: React.FC = () => {
   };
 
   // Sincronización al restaurar copia de seguridad
-  const handleDataRestored = () => {
+  const handleDataRestored = useCallback(() => {
     refreshTasks();
     refreshCategories();
     refreshNotes();
     refreshReminders();
     setSelectedTask(null);
     setSelectedReminder(null);
-  };
+  }, [refreshTasks, refreshCategories, refreshNotes, refreshReminders]);
 
   // Navegar al inicio (Tareas -> Hoy) y cerrar paneles abiertos
   const handleGoHome = () => {
@@ -382,6 +399,16 @@ export const App: React.FC = () => {
             </div>
           )}
 
+          {/* SECCIÓN: Cuenta / Perfil */}
+          {activeNav === 'cuenta' && (
+            <AccountPage
+              onGoHome={handleGoHome}
+              onDataRestored={handleDataRestored}
+              onNavigateToSettings={() => setActiveNav('ajustes')}
+              onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
+            />
+          )}
+
           {/* SECCIÓN: Ajustes */}
           {activeNav === 'ajustes' && (
             <SettingsPage
@@ -391,6 +418,7 @@ export const App: React.FC = () => {
               onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
               onDataRestored={handleDataRestored}
               onGoHome={handleGoHome}
+              onNavigateToAccount={() => setActiveNav('cuenta')}
             />
           )}
         </div>
@@ -483,6 +511,20 @@ export const App: React.FC = () => {
           setSelectedTask(null);
           setSelectedReminder(null);
         }}
+      />
+
+      {/* Modal de Bienvenida para primera visita (Iniciar sesión vs Modo local) */}
+      <WelcomeModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => setIsWelcomeModalOpen(false)}
+        onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
+      />
+
+      {/* Modal global de Autenticación con Supabase */}
+      <AuthModal
+        isOpen={isGlobalAuthModalOpen}
+        onClose={() => setIsGlobalAuthModalOpen(false)}
+        onSuccess={handleDataRestored}
       />
     </div>
   );

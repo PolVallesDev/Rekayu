@@ -52,13 +52,18 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 /**
- * Registra un nuevo usuario con correo y contraseña.
+ * Registra un nuevo usuario con correo, contraseña y nombre opcional.
  */
-export async function signUpWithEmail(email: string, password: string) {
+export async function signUpWithEmail(email: string, password: string, fullName?: string) {
   if (!supabase) throw new Error('Supabase no está configurado');
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        full_name: fullName?.trim() || '',
+      },
+    },
   });
   if (error) throw error;
   return data;
@@ -198,10 +203,10 @@ export async function fetchRemoteAppData(userId: string): Promise<AppData | null
 
     if (catRes.error || taskRes.error || remRes.error || noteRes.error) {
       console.warn('Error al cargar datos de Supabase:', {
-        cat: catRes.error,
-        task: taskRes.error,
-        rem: remRes.error,
-        note: noteRes.error,
+        cat: catRes.error?.message,
+        task: taskRes.error?.message,
+        rem: remRes.error?.message,
+        note: noteRes.error?.message,
       });
       return null;
     }
