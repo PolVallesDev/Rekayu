@@ -10,6 +10,9 @@ const VALID_ROUTES: NavSection[] = ['tareas', 'calendario', 'recordatorios', 'no
 export const useRouterNav = () => {
   const getSectionFromPath = (): NavSection => {
     const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+    if (path === 'inicio') {
+      return 'tareas';
+    }
     if (VALID_ROUTES.includes(path as NavSection)) {
       return path as NavSection;
     }
