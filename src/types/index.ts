@@ -41,6 +41,10 @@ export type ViewType = 'hoy' | 'proximos' | 'todas' | 'hechas';
 
 export type SectionType = 'tareas' | 'recordatorios' | 'notas';
 
+export type MainPage = 'dashboard' | 'calendar' | 'settings';
+
+export type NavSection = 'tareas' | 'calendario' | 'recordatorios' | 'notas' | 'ajustes';
+
 export interface Note {
   id: string;
   title: string;

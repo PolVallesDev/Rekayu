@@ -108,3 +108,83 @@ export const formatDateLongSpanish = (dueDateString: string): string => {
   });
 };
 
+export interface CalendarDay {
+  dateString: string; // Formato YYYY-MM-DD
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+}
+
+export const WEEKDAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+/**
+ * Genera la cuadrícula de días para un mes dado (iniciando en lunes)
+ */
+export const getCalendarMonthDays = (year: number, month: number): CalendarDay[] => {
+  const todayStr = getTodayString();
+  const firstDayOfMonth = new Date(year, month, 1);
+  // getDay(): 0 es domingo, 1 es lunes... Convertimos a: 0 = lunes, 6 = domingo
+  const startDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const days: CalendarDay[] = [];
+
+  // Días del mes anterior para rellenar la primera fila
+  for (let i = startDayIndex - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const prevMonthDate = new Date(year, month - 1, dayNum);
+    const y = prevMonthDate.getFullYear();
+    const m = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+    const d = String(dayNum).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    days.push({
+      dateString: dateStr,
+      dayNumber: dayNum,
+      isCurrentMonth: false,
+      isToday: dateStr === todayStr,
+    });
+  }
+
+  // Días del mes actual
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+    const m = String(month + 1).padStart(2, '0');
+    const d = String(dayNum).padStart(2, '0');
+    const dateStr = `${year}-${m}-${d}`;
+    days.push({
+      dateString: dateStr,
+      dayNumber: dayNum,
+      isCurrentMonth: true,
+      isToday: dateStr === todayStr,
+    });
+  }
+
+  // Días del mes siguiente para completar la cuadrícula (hasta múltiplo de 7)
+  const remainingDays = (7 - (days.length % 7)) % 7;
+  for (let dayNum = 1; dayNum <= remainingDays; dayNum++) {
+    const nextMonthDate = new Date(year, month + 1, dayNum);
+    const y = nextMonthDate.getFullYear();
+    const m = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+    const d = String(dayNum).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    days.push({
+      dateString: dateStr,
+      dayNumber: dayNum,
+      isCurrentMonth: false,
+      isToday: dateStr === todayStr,
+    });
+  }
+
+  return days;
+};
+
+/**
+ * Devuelve el nombre del mes y año en español (ej. "Octubre de 2026")
+ */
+export const getMonthYearTitle = (year: number, month: number): string => {
+  const d = new Date(year, month, 1);
+  const text = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+

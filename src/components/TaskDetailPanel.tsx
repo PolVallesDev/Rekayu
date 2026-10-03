@@ -32,6 +32,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
   // Escuchar tecla Escape para cerrar
   useEffect(() => {
@@ -40,6 +41,23 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // Escuchar clic fuera del panel para cerrar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [onClose]);
 
   // Autoajuste de altura de textareas
@@ -161,15 +179,17 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   return (
     <>
-      {/* Backdrop para móviles */}
+      {/* Backdrop universal para cerrar al hacer clic fuera (móvil y escritorio) */}
       <div
-        className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-xs z-30 animate-in fade-in"
+        className="fixed inset-0 bg-black/20 lg:bg-black/10 backdrop-blur-xs z-40 animate-in fade-in duration-200 cursor-pointer"
         onClick={onClose}
+        aria-label="Cerrar panel"
       />
 
       {/* Panel lateral (480px fijo a la derecha en escritorio, pantalla completa en móvil) */}
       <aside
-        className="fixed top-0 right-0 bottom-0 z-40 w-full lg:w-[480px] bg-calma-surface border-l border-calma-line shadow-2xl flex flex-col overflow-y-auto overscroll-contain transition-transform duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+        ref={panelRef}
+        className="fixed top-0 right-0 bottom-0 z-50 w-full lg:w-[480px] bg-calma-surface border-l border-calma-line shadow-2xl flex flex-col overflow-y-auto overscroll-contain transition-transform duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
         aria-label="Detalle de la tarea"
       >
         <div className="max-w-[520px] w-full mx-auto px-6 sm:px-7 pt-[calc(20px+env(safe-area-inset-top,0px))] pb-[calc(40px+env(safe-area-inset-bottom,0px))]">

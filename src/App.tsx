@@ -1,17 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { ViewType, SectionType, Task, Reminder } from './types';
+import { ViewType, Task, Reminder } from './types';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTasks } from './hooks/useTasks';
 import { useCategories } from './hooks/useCategories';
 import { useNotes } from './hooks/useNotes';
 import { useReminders } from './hooks/useReminders';
 import { isOverdue, isToday, getDaysRemaining, getTodayString } from './lib/dates';
+import { useRouterNav } from './hooks/useRouterNav';
 
+import { FloatingNav } from './components/FloatingNav';
 import { Header } from './components/Header';
 import { ExamsBanner } from './components/ExamsBanner';
 import { ViewTabs } from './components/ViewTabs';
 import { CategoryFilter } from './components/CategoryFilter';
 import { TaskList } from './components/TaskList';
+import { CalendarPage } from './components/CalendarPage';
+import { SettingsPage } from './components/SettingsPage';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { ReminderDetailPanel } from './components/ReminderDetailPanel';
 import { PinnedTasksRail } from './components/PinnedTasksRail';
@@ -43,8 +47,8 @@ export const App: React.FC = () => {
     refreshReminders,
   } = useReminders();
 
-  // Sección activa (Tareas, Recordatorios, Notas)
-  const [activeSection, setActiveSection] = useState<SectionType>('tareas');
+  // Navegación unificada de secciones con URLs reales (/tareas, /calendario, etc.)
+  const { activeNav, setActiveNav } = useRouterNav();
 
   // Sub-vista de tareas (Hoy, Próximos, Hechas)
   const [activeView, setActiveView] = useState<ViewType>('hoy');
@@ -100,7 +104,7 @@ export const App: React.FC = () => {
     };
   }, [tasks, reminders, notes]);
 
-  // Manejador de añadido rápido desde la barra inferior
+  // Manejador de añadido rápido desde la barra inferior (Tareas)
   const handleQuickAddTask = (title: string) => {
     const defaultCatId = selectedCategoryId || (categories[0]?.id ?? 'cat-personal');
     const created = addTask({
@@ -109,7 +113,21 @@ export const App: React.FC = () => {
       categoryId: defaultCatId,
       dueDate: getTodayString(),
     });
+    setActiveNav('tareas');
     setActiveView('hoy');
+    setSelectedReminder(null);
+    setSelectedTask(created);
+  };
+
+  // Manejador para añadir tarea con fecha concreta (desde Calendario)
+  const handleAddTaskForDate = (title: string, date: string) => {
+    const defaultCatId = selectedCategoryId || (categories[0]?.id ?? 'cat-personal');
+    const created = addTask({
+      title,
+      priority: 'media',
+      categoryId: defaultCatId,
+      dueDate: date,
+    });
     setSelectedReminder(null);
     setSelectedTask(created);
   };
@@ -153,8 +171,17 @@ export const App: React.FC = () => {
         isPanelOpen ? 'lg:pr-[480px]' : ''
       }`}
     >
-      {/* Panel fijo lateral izquierdo de tareas fijadas (se oculta cuando hay un panel abierto para mantener equilibrio visual) */}
-      {activeSection === 'tareas' && !isPanelOpen && (
+      {/* Menú de navegación flotante adaptativo (arriba a la derecha -> vertical al lado de la nota) */}
+      <FloatingNav
+        activeSection={activeNav}
+        onChangeSection={(sec) => {
+          setActiveNav(sec);
+        }}
+        isPanelOpen={isPanelOpen}
+      />
+
+      {/* Panel fijo lateral izquierdo de tareas fijadas (solo en escritorio, en vista de tareas) */}
+      {activeNav === 'tareas' && !isPanelOpen && (
         <PinnedTasksRail
           tasks={tasks}
           categories={categories}
@@ -168,27 +195,29 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Contenedor centrado max-w-[560px] */}
-      <div className="w-full max-w-[560px] mx-auto h-full flex flex-col px-6 pt-5 sm:pt-8 min-h-0">
-        {/* 1. Cabecera y controles superiores fijos (sin scroll) */}
+      {/* Contenedor principal responsive con animación de entrada tipo popup desvanecido desde abajo */}
+      <div
+        key={activeNav}
+        className={`w-full ${
+          activeNav === 'calendario'
+            ? 'max-w-[560px] md:max-w-[860px] lg:max-w-[940px]'
+            : 'max-w-[560px]'
+        } mx-auto h-full flex flex-col px-4 sm:px-6 pt-[72px] sm:pt-8 min-h-0 animate-page-popup`}
+      >
+        {/* 1. Cabecera y controles fijos */}
         <div className="flex-none">
-          <Header
-            activeSection={activeSection}
-            onChangeSection={(sec) => {
-              setActiveSection(sec);
-              setSelectedTask(null);
-              setSelectedReminder(null);
-            }}
-            activeView={activeView}
-            pendingTasksCount={counts.pendingTasks}
-            pendingRemindersCount={counts.pendingReminders}
-            notesCount={counts.notesCount}
-            isDark={isDark}
-            onToggleDarkMode={toggleDarkMode}
-            onOpenBackup={() => setIsBackupModalOpen(true)}
-          />
+          {/* Cabecera para Tareas, Recordatorios o Notas */}
+          {(activeNav === 'tareas' || activeNav === 'recordatorios' || activeNav === 'notas') && (
+            <Header
+              activeSection={activeNav}
+              activeView={activeView}
+              pendingTasksCount={counts.pendingTasks}
+              pendingRemindersCount={counts.pendingReminders}
+              notesCount={counts.notesCount}
+            />
+          )}
 
-          {activeSection === 'tareas' && (
+          {activeNav === 'tareas' && (
             <>
               {/* Pestañas de Vista (Hoy, Próximos, Hechas) */}
               <ViewTabs
@@ -210,10 +239,10 @@ export const App: React.FC = () => {
 
         {/* 2. Área scrolleable interna (Solo esta sección hace scroll) */}
         <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-32 overscroll-contain px-1">
-          {/* Sección: Tareas */}
-          {activeSection === 'tareas' && (
+          {/* SECCIÓN: Tareas */}
+          {activeNav === 'tareas' && (
             <div className="space-y-0">
-              {/* Widget de Fechas Clave / Exámenes (solo en vista Hoy) */}
+              {/* Banner de Fechas Clave / Exámenes (solo en vista Hoy) */}
               {activeView === 'hoy' && (
                 <ExamsBanner
                   tasks={tasks}
@@ -245,9 +274,25 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Sección: Recordatorios */}
-          {activeSection === 'recordatorios' && (
-            <div className="mt-4">
+          {/* SECCIÓN: Calendario */}
+          {activeNav === 'calendario' && (
+            <CalendarPage
+              tasks={tasks}
+              categories={categories}
+              reminders={reminders}
+              selectedTaskId={selectedTask?.id}
+              onSelectTask={(task) => {
+                setSelectedReminder(null);
+                setSelectedTask(task);
+              }}
+              onToggleTask={handleToggleTask}
+              onAddTaskForDate={handleAddTaskForDate}
+            />
+          )}
+
+          {/* SECCIÓN: Recordatorios */}
+          {activeNav === 'recordatorios' && (
+            <div className="mt-2">
               <RemindersSection
                 reminders={reminders}
                 selectedReminderId={selectedReminder?.id}
@@ -262,9 +307,9 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Sección: Notas */}
-          {activeSection === 'notas' && (
-            <div className="mt-4">
+          {/* SECCIÓN: Notas */}
+          {activeNav === 'notas' && (
+            <div className="mt-2">
               <NotesSection
                 notes={notes}
                 onAddNote={addNote}
@@ -274,18 +319,29 @@ export const App: React.FC = () => {
               />
             </div>
           )}
+
+          {/* SECCIÓN: Ajustes */}
+          {activeNav === 'ajustes' && (
+            <SettingsPage
+              isDark={isDark}
+              onToggleDarkMode={toggleDarkMode}
+              categories={categories}
+              onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
+              onDataRestored={handleDataRestored}
+            />
+          )}
         </div>
       </div>
 
-      {/* Barra flotante inferior de añadir tarea (solo en sección de tareas) */}
-      {activeSection === 'tareas' && (
+      {/* Barra flotante inferior de añadir tarea (solo en vista de tareas) */}
+      {activeNav === 'tareas' && (
         <AddBar
           onAddTask={handleQuickAddTask}
           hasPanelOpen={isPanelOpen}
         />
       )}
 
-      {/* Panel lateral de detalle de tarea ("La nota") */}
+      {/* Panel lateral de detalle de tarea */}
       {selectedTask && (
         <TaskDetailPanel
           task={selectedTask}

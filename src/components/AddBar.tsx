@@ -24,7 +24,7 @@ export const AddBar: React.FC<AddBarProps> = ({ onAddTask, hasPanelOpen }) => {
     >
       <form
         onSubmit={handleSubmit}
-        className="pointer-events-auto max-w-[512px] mx-auto flex items-center gap-3 bg-calma-surface rounded-full py-2 pl-6 pr-2 shadow-lg border border-calma-line/60 focus-within:ring-2 focus-within:ring-calma-accent focus-within:border-transparent transition-all"
+        className="pointer-events-auto max-w-[512px] mx-auto flex items-center gap-3 bg-calma-surface rounded-full py-2 pl-6 pr-2 shadow-lg border border-calma-line/60 focus-within:ring-2 focus-within:ring-calma-accent focus-within:border-transparent transition-all animate-page-popup"
       >
         <input
           type="text"

@@ -30,6 +30,21 @@ export default {
       boxShadow: {
         calma: 'var(--shadow)',
       },
+      keyframes: {
+        'page-popup': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(16px) scale(0.985)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'none',
+          },
+        },
+      },
+      animation: {
+        'page-popup': 'page-popup 260ms cubic-bezier(0.16, 1, 0.3, 1) both',
+      },
     },
   },
   plugins: [],
