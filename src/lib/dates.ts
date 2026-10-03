@@ -108,6 +108,20 @@ export const formatDateLongSpanish = (dueDateString: string): string => {
   });
 };
 
+/**
+ * Devuelve una fecha en formato corto en español (ej: "mié, 7 oct")
+ */
+export const formatDateShortSpanish = (dueDateString: string): string => {
+  if (!dueDateString) return '';
+  const [year, month, day] = dueDateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+};
+
 export interface CalendarDay {
   dateString: string; // Formato YYYY-MM-DD
   dayNumber: number;

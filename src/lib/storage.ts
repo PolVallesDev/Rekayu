@@ -235,6 +235,17 @@ export const saveTasks = (tasks: Task[]): void => {
 };
 
 /**
+ * Añade una lista de tareas importadas por lotes a la persistencia
+ */
+export const batchAddTasks = (newTasks: Task[]): void => {
+  const current = getAppData();
+  const existingIds = new Set(current.tasks.map((t) => t.id));
+  const uniqueNew = newTasks.filter((t) => !existingIds.has(t.id));
+  current.tasks = [...uniqueNew, ...current.tasks];
+  saveAppData(current);
+};
+
+/**
  * Categorías
  */
 export const getCategories = (): Category[] => {
@@ -271,6 +282,30 @@ export const saveReminders = (reminders: Reminder[]): void => {
   const current = getAppData();
   current.reminders = reminders;
   saveAppData(current);
+};
+
+/**
+ * Añade un recordatorio automático para volver a importar el calendario en X días
+ */
+export const addImportReminder = (daysAhead: number, title?: string): Reminder => {
+  const current = getAppData();
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  const targetDateStr = d.toISOString().split('T')[0];
+
+  const reminder: Reminder = {
+    id: `rem-import-${Date.now()}`,
+    title: title || `Actualizar calendario Moodle / .ics (${daysAhead} días)`,
+    dueDate: targetDateStr,
+    dueTime: '10:00',
+    notes: `Recordatorio automático para volver a exportar e importar las tareas y entregas de Moodle.`,
+    isCompleted: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  current.reminders = [reminder, ...(current.reminders || [])];
+  saveAppData(current);
+  return reminder;
 };
 
 /**

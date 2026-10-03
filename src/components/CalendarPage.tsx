@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,6 +8,8 @@ import {
   Circle,
   Clock,
   Pin,
+  Upload,
+  X,
 } from 'lucide-react';
 import { Task, Category, Reminder } from '../types';
 import { TaskCard } from './TaskCard';
@@ -18,6 +20,8 @@ import {
   getTodayString,
   formatDateLongSpanish,
 } from '../lib/dates';
+import { parseIcsContent, ParsedIcsEvent } from '../lib/icalParser';
+import { IcsImportModal } from './IcsImportModal';
 
 interface CalendarPageProps {
   tasks: Task[];
@@ -29,6 +33,10 @@ interface CalendarPageProps {
   onTogglePin?: (id: string) => void;
   onAddTaskForDate: (title: string, date: string) => void;
   onGoHome?: () => void;
+  onImportTasks?: (
+    tasks: Task[],
+    reminderConfig?: { enabled: boolean; daysAhead: number }
+  ) => void;
 }
 
 export const CalendarPage: React.FC<CalendarPageProps> = ({
@@ -41,11 +49,16 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   onTogglePin,
   onAddTaskForDate,
   onGoHome,
+  onImportTasks,
 }) => {
   const todayStr = getTodayString();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDateString, setSelectedDateString] = useState(todayStr);
   const [quickTitle, setQuickTitle] = useState('');
+  const [parsedEvents, setParsedEvents] = useState<ParsedIcsEvent[]>([]);
+  const [isIcsModalOpen, setIsIcsModalOpen] = useState(false);
+  const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
   // Tareas fijadas pendientes (para vista compacta en móvil/tablet)
   const pinnedTasks = useMemo(() => {
@@ -124,6 +137,38 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     setQuickTitle('');
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      const events = parseIcsContent(text);
+      if (events.length === 0) {
+        setImportFeedback('No se encontraron eventos válidos en el archivo .ics seleccionado.');
+        return;
+      }
+      setParsedEvents(events);
+      setIsIcsModalOpen(true);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleConfirmImport = (
+    importedTasks: Task[],
+    reminderConfig?: { enabled: boolean; daysAhead: number }
+  ) => {
+    if (onImportTasks) {
+      onImportTasks(importedTasks, reminderConfig);
+    }
+    setImportFeedback(
+      `Se ${importedTasks.length === 1 ? 'ha importado 1 tarea' : `han importado ${importedTasks.length} tareas`} correctamente al calendario.`
+    );
+  };
+
   const isCurrentMonthViewing =
     new Date().getFullYear() === year && new Date().getMonth() === month;
 
@@ -150,32 +195,71 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           </h1>
         </div>
 
-        {/* Controles de navegación de mes */}
-        <div className="flex items-center gap-1.5 bg-calma-surface p-1 rounded-full border border-calma-line shadow-xs">
-          {!isCurrentMonthViewing && (
+        {/* Acciones de cabecera: Importar .ics + Controles de navegación */}
+        <div className="flex items-center gap-2">
+          {/* Botón Importar .ics */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-calma-muted hover:text-calma-ink bg-calma-surface border border-calma-line hover:border-calma-accent/40 transition-all shadow-xs cursor-pointer"
+            title="Importar tareas desde archivo .ics (Moodle, Google Calendar, etc.)"
+          >
+            <Upload className="w-3.5 h-3.5 text-calma-accent" />
+            <span className="hidden sm:inline">Importar .ics</span>
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".ics,text/calendar"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          {/* Controles de navegación de mes */}
+          <div className="flex items-center gap-1.5 bg-calma-surface p-1 rounded-full border border-calma-line shadow-xs">
+            {!isCurrentMonthViewing && (
+              <button
+                onClick={handleGoToday}
+                className="text-[12px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-bg rounded-full transition-colors"
+              >
+                Hoy
+              </button>
+            )}
             <button
-              onClick={handleGoToday}
-              className="text-[12px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-bg rounded-full transition-colors"
+              onClick={handlePrevMonth}
+              aria-label="Mes anterior"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
             >
-              Hoy
+              <ChevronLeft className="w-4 h-4" />
             </button>
-          )}
-          <button
-            onClick={handlePrevMonth}
-            aria-label="Mes anterior"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleNextMonth}
-            aria-label="Mes siguiente"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <button
+              onClick={handleNextMonth}
+              aria-label="Mes siguiente"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Banner de feedback si se importó o hubo mensaje */}
+      {importFeedback && (
+        <div className="p-3 rounded-2xl text-xs sm:text-[13px] font-medium flex items-center justify-between bg-calma-accent-soft border border-calma-accent text-calma-ink animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-calma-accent flex-none" />
+            <span>{importFeedback}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setImportFeedback(null)}
+            className="text-calma-muted hover:text-calma-ink p-1 rounded-lg"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Sección destacada de tareas fijadas en móvil / tablet (igual que en Tareas) */}
       {pinnedTasks.length > 0 && (
@@ -407,6 +491,16 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
         )}
       </div>
       </div>
+
+      {/* Modal de previsualización e importación de calendario .ics */}
+      <IcsImportModal
+        isOpen={isIcsModalOpen}
+        onClose={() => setIsIcsModalOpen(false)}
+        parsedEvents={parsedEvents}
+        existingTasks={tasks}
+        categories={categories}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 };

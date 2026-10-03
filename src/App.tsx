@@ -8,6 +8,7 @@ import { useReminders } from './hooks/useReminders';
 import { isOverdue, isToday, getDaysRemaining, getTodayString } from './lib/dates';
 import { useRouterNav } from './hooks/useRouterNav';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { batchAddTasks, addImportReminder } from './lib/storage';
 
 import { FloatingNav } from './components/FloatingNav';
 import { Header } from './components/Header';
@@ -187,6 +188,19 @@ export const App: React.FC = () => {
     setSelectedReminder(null);
   };
 
+  // Importar tareas masivas desde calendario .ics y programar recordatorio periódico
+  const handleImportIcsTasks = (
+    importedTasks: Task[],
+    reminderConfig?: { enabled: boolean; daysAhead: number }
+  ) => {
+    batchAddTasks(importedTasks);
+    if (reminderConfig?.enabled) {
+      addImportReminder(reminderConfig.daysAhead);
+      refreshReminders();
+    }
+    refreshTasks();
+  };
+
   return (
     <div
       className={`h-screen h-[100dvh] overflow-hidden bg-calma-bg text-calma-ink font-sans flex flex-col transition-all duration-350 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${
@@ -313,6 +327,7 @@ export const App: React.FC = () => {
               onTogglePin={togglePinTask}
               onAddTaskForDate={handleAddTaskForDate}
               onGoHome={handleGoHome}
+              onImportTasks={handleImportIcsTasks}
             />
           )}
 
