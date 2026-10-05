@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Task, Category } from '../types';
-import { Check, Link as LinkIcon, Pin } from 'lucide-react';
+import { Check, Link as LinkIcon, Pin, Trash2 } from 'lucide-react';
+import { formatDateFriendly } from '../lib/dates';
 
 interface TaskCardProps {
   task: Task;
@@ -11,6 +12,7 @@ interface TaskCardProps {
   onTogglePin?: (id: string) => void;
   onEdit?: (task: Task) => void;
   onDelete?: (id: string) => void;
+  showDateBadge?: boolean;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -20,6 +22,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onSelect,
   onToggle,
   onTogglePin,
+  onDelete,
+  showDateBadge,
 }) => {
   const isDone = task.status === 'hecha';
 
@@ -231,8 +235,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </span>
             )}
 
+            {/* Fecha programada */}
+            {task.dueDate && (
+              <span
+                className={`inline-flex items-center text-xs font-medium ${
+                  showDateBadge ? 'text-calma-ink/80 bg-calma-bg px-1.5 py-0.5 rounded-md border border-calma-line/60' : 'text-calma-muted/90'
+                }`}
+              >
+                {formatDateFriendly(task.dueDate)}
+              </span>
+            )}
+
             {subtasksCount > 0 && (
-              <span className="inline-flex items-center text-xs ml-1 text-calma-muted/90 font-medium">
+              <span className="inline-flex items-center text-xs text-calma-muted/90 font-medium">
                 {completedSubtasks}/{subtasksCount}
               </span>
             )}
@@ -268,6 +283,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             title={task.isPinned ? 'Desfijar tarea' : 'Fijar tarea'}
           >
             <Pin className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Botón para eliminar rápidamente en escritorio */}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`¿Eliminar la tarea "${task.title}"?`)) {
+                onDelete(task.id);
+              }
+            }}
+            className="p-1.5 rounded-lg transition-all flex-none hidden sm:block text-calma-muted opacity-0 sm:group-hover:opacity-100 hover:text-calma-warn hover:bg-calma-surface"
+            title="Eliminar tarea"
+            aria-label="Eliminar tarea"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
 

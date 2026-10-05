@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
       summary = 'Tareas completadas';
     } else if (activeView === 'todas') {
       title = 'Todas';
-      summary = `${pendingTasksCount} pendientes`;
+      summary = pendingTasksCount === 0 ? 'Todo al día' : `${pendingTasksCount} pendientes`;
     }
   } else if (activeSection === 'recordatorios') {
     title = 'Recordatorios';

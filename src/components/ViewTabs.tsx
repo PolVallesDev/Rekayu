@@ -19,6 +19,7 @@ export const ViewTabs: React.FC<ViewTabsProps> = ({
   const tabs: { id: ViewType; label: string }[] = [
     { id: 'hoy', label: 'Hoy' },
     { id: 'proximos', label: 'Próximos' },
+    { id: 'todas', label: 'Todas' },
     { id: 'hechas', label: 'Hechas' },
   ];
 

@@ -151,17 +151,96 @@ export const TaskList: React.FC<TaskListProps> = ({
     );
   }
 
-  // Vista 'hoy' (por defecto) o 'todas'
+  // Vista 'todas'
+  if (activeView === 'todas') {
+    const pendingAll = filteredTasks.filter((t) => t.status === 'pendiente');
+    const doneAll = filteredTasks.filter((t) => t.status === 'hecha');
+
+    if (pendingAll.length === 0 && doneAll.length === 0) {
+      const isFiltered = !!(selectedCategoryId || selectedPriority);
+      return (
+        <div className="text-center py-14 px-4 select-none">
+          <b className="font-serif font-normal text-[30px] sm:text-[34px] text-calma-ink block mb-1">
+            {isFiltered ? 'Sin tareas coincidentes' : 'No hay tareas'}
+          </b>
+          <p className="text-calma-muted text-[15px] m-0">
+            {isFiltered
+              ? 'No hay tareas con los filtros seleccionados.'
+              : 'Crea una tarea desde la barra inferior para comenzar.'}
+          </p>
+        </div>
+      );
+    }
+
+    const sortedPending = [...pendingAll].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate && !b.dueDate) return -1;
+      if (!a.dueDate && b.dueDate) return 1;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Tareas pendientes */}
+        {sortedPending.length > 0 && (
+          <div className="space-y-1 px-1 py-1">
+            {sortedPending.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                category={categoryMap.get(task.categoryId)}
+                isSelected={selectedTaskId === task.id}
+                onSelect={onSelectTask}
+                onToggle={onToggleTask}
+                onTogglePin={onTogglePin}
+                onEdit={onEditTask}
+                onDelete={onDeleteTask}
+                showDateBadge={true}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Tareas completadas (si las hay) */}
+        {doneAll.length > 0 && (
+          <div className="pt-2">
+            <p className="text-calma-muted text-[13px] font-medium uppercase tracking-wider mb-2 px-1">
+              Completadas ({doneAll.length})
+            </p>
+            <div className="space-y-1 px-1 py-1">
+              {doneAll.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  category={categoryMap.get(task.categoryId)}
+                  isSelected={selectedTaskId === task.id}
+                  onSelect={onSelectTask}
+                  onToggle={onToggleTask}
+                  onTogglePin={onTogglePin}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                  showDateBadge={true}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Vista 'hoy' (por defecto)
   const pendingTasks = filteredTasks.filter((t) => {
     if (t.status !== 'pendiente') return false;
-    if (activeView === 'todas') return true;
     if (!t.dueDate) return true;
     return isToday(t.dueDate) || isOverdue(t.dueDate);
   });
 
   // Tareas fijadas para pantallas medianas/móvil
-  const pinnedTasks = activeView === 'hoy' ? pendingTasks.filter((t) => t.isPinned) : [];
-  const otherTasks = activeView === 'hoy' ? pendingTasks.filter((t) => !t.isPinned) : pendingTasks;
+  const pinnedTasks = pendingTasks.filter((t) => t.isPinned);
+  const otherTasks = pendingTasks.filter((t) => !t.isPinned);
 
   if (pendingTasks.length === 0) {
     const isFiltered = !!(selectedCategoryId || selectedPriority);

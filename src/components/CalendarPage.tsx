@@ -188,7 +188,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   return (
     <div className="space-y-6 pb-28">
       {/* 1. Cabecera del Calendario */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:pr-[360px]">
         <div>
           <div className="mb-1 sm:mb-1.5 flex items-center gap-1.5 text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium whitespace-nowrap overflow-hidden text-ellipsis">
             <button
@@ -201,14 +201,14 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
               <span className="font-semibold text-calma-ink">Rekayu</span>
             </button>
             <span className="text-calma-muted/40 font-light">·</span>
-            <span className="capitalize">{getMonthYearTitle(year, month)}</span>
+            <span>Vista mensual</span>
           </div>
           <h1 className="font-serif font-normal text-[36px] sm:text-[46px] leading-none tracking-[-0.01em] text-calma-ink m-0">
             Calendario
           </h1>
         </div>
 
-        {/* Acciones de cabecera: Importar/Exportar .ics + Controles de navegación */}
+        {/* Acciones de cabecera: Importar/Exportar .ics */}
         <div className="flex items-center gap-2">
           {/* Botón Exportar .ics */}
           <button
@@ -218,7 +218,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             title="Exportar tareas y exámenes a archivo .ics (Apple Calendar, Google, etc.)"
           >
             <Download className="w-3.5 h-3.5 text-calma-accent" />
-            <span className="hidden sm:inline">Exportar .ics</span>
+            <span className="inline">Exportar .ics</span>
           </button>
 
           {/* Botón Importar .ics */}
@@ -229,7 +229,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             title="Importar tareas desde archivo .ics (Moodle, Google Calendar, etc.)"
           >
             <Upload className="w-3.5 h-3.5 text-calma-accent" />
-            <span className="hidden sm:inline">Importar .ics</span>
+            <span className="inline">Importar .ics</span>
           </button>
 
           <input
@@ -239,35 +239,6 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             className="hidden"
             onChange={handleFileSelect}
           />
-
-          {/* Controles de navegación de mes */}
-          <div className="flex items-center gap-1.5 bg-calma-surface p-1 rounded-full border border-calma-line shadow-xs">
-            {!isCurrentMonthViewing && (
-              <button
-                type="button"
-                onClick={handleGoToday}
-                className="text-[12px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-bg rounded-full transition-colors cursor-pointer touch-manipulation"
-              >
-                Hoy
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              aria-label="Mes anterior"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors cursor-pointer touch-manipulation"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              aria-label="Mes siguiente"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors cursor-pointer touch-manipulation"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -315,8 +286,43 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-start">
         {/* 2. Cuadrícula Mensual (Columna Izquierda) */}
         <div className="bg-calma-surface rounded-2xl p-4 sm:p-5 border border-calma-line shadow-xs">
-        {/* Nombres de los días de la semana */}
-        <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+          {/* Cabecera del Mes con Navegación integrada */}
+          <div className="flex items-center justify-between mb-4 pb-2.5 border-b border-calma-line/60">
+            <h2 className="font-serif font-normal text-[22px] sm:text-[24px] text-calma-ink capitalize m-0">
+              {getMonthYearTitle(year, month)}
+            </h2>
+
+            <div className="flex items-center gap-1 bg-calma-bg p-1 rounded-full border border-calma-line">
+              {!isCurrentMonthViewing && (
+                <button
+                  type="button"
+                  onClick={handleGoToday}
+                  className="text-[11.5px] font-medium px-2.5 py-1 text-calma-accent hover:bg-calma-surface rounded-full transition-colors cursor-pointer touch-manipulation"
+                >
+                  Hoy
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                aria-label="Mes anterior"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-surface transition-colors cursor-pointer touch-manipulation"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                aria-label="Mes siguiente"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-ink hover:bg-calma-surface transition-colors cursor-pointer touch-manipulation"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Nombres de los días de la semana */}
+          <div className="grid grid-cols-7 gap-1 mb-2 text-center">
           {WEEKDAYS_ES.map((dayName, idx) => (
             <div
               key={dayName}
