@@ -168,10 +168,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    {/* <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       En línea
-                    </span>
+                    </span> */}
                   </div>
                   <p className="text-[13.5px] text-calma-muted m-0">{user.email}</p>
                   {memberSince && (
