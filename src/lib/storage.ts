@@ -3,7 +3,36 @@ import { AppData, Category, Task, Note, Reminder } from '../types';
 import { getTodayString } from './dates';
 import { supabase, pushAllLocalDataToSupabase } from './supabase';
 
-const STORAGE_KEY = 'rekayu_app_data_v1';
+const GUEST_STORAGE_KEY = 'rekayu_app_data_v1';
+const ACTIVE_USER_ID_KEY = 'rekayu_active_user_id';
+
+let currentUserId: string | null = ((): string | null => {
+  try {
+    return localStorage.getItem(ACTIVE_USER_ID_KEY);
+  } catch {
+    return null;
+  }
+})();
+
+export const setActiveStorageUser = (userId: string | null): void => {
+  currentUserId = userId;
+  try {
+    if (userId) {
+      localStorage.setItem(ACTIVE_USER_ID_KEY, userId);
+    } else {
+      localStorage.removeItem(ACTIVE_USER_ID_KEY);
+    }
+  } catch {}
+};
+
+export const getActiveStorageUser = (): string | null => currentUserId;
+
+export const getStorageKey = (): string => {
+  if (currentUserId) {
+    return `rekayu_user_${currentUserId}_v1`;
+  }
+  return GUEST_STORAGE_KEY;
+};
 
 // Categorías por defecto del sistema
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -164,43 +193,26 @@ const getSeedReminders = (): Reminder[] => {
   ];
 };
 
-// Registro de elementos eliminados localmente para evitar que resuciten desde la nube
-const DELETED_IDS_KEY = 'rekayu_deleted_ids_v1';
-
-export const getDeletedItemIds = (): Set<string> => {
-  try {
-    const raw = localStorage.getItem(DELETED_IDS_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-};
-
-export const markItemDeleted = (id: string): void => {
-  try {
-    const set = getDeletedItemIds();
-    set.add(id);
-    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(set)));
-  } catch {}
-};
-
-export const unmarkItemDeleted = (id: string): void => {
-  try {
-    const set = getDeletedItemIds();
-    set.delete(id);
-    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(set)));
-  } catch {}
-};
-
 /**
  * Carga todo el estado de la aplicación desde la persistencia
  */
 export const getAppData = (): AppData => {
+  const key = getStorageKey();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
+      // Si el usuario está autenticado, no inyectamos tareas semilla para no ensuciar su cuenta
+      if (currentUserId) {
+        return {
+          version: 1,
+          categories: DEFAULT_CATEGORIES,
+          tasks: [],
+          notes: [],
+          reminders: [],
+        };
+      }
+
+      // Si es un visitante anónimo en modo local, sí le damos la bienvenida con semillas
       const initialData: AppData = {
         version: 1,
         categories: DEFAULT_CATEGORIES,
@@ -215,46 +227,17 @@ export const getAppData = (): AppData => {
     const parsed: AppData = JSON.parse(raw);
 
     // Validar integridad mínima y asegurar colecciones
-    if (!parsed.categories || !Array.isArray(parsed.categories)) {
+    if (!parsed.categories || !Array.isArray(parsed.categories) || parsed.categories.length === 0) {
       parsed.categories = DEFAULT_CATEGORIES;
     }
     if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
       parsed.tasks = [];
     }
     if (!parsed.notes || !Array.isArray(parsed.notes)) {
-      parsed.notes = getSeedNotes();
+      parsed.notes = [];
     }
     if (!parsed.reminders || !Array.isArray(parsed.reminders)) {
-      parsed.reminders = getSeedReminders();
-    }
-
-    // Desambiguar ID de 'Entrega de propuesta MVP' si usaba el seed genérico
-    parsed.tasks = parsed.tasks.map((t) => {
-      if (t.id === 'task-seed-1' && t.title.toLowerCase().includes('propuesta mvp')) {
-        return { ...t, id: 'task-propuesta-mvp' };
-      }
-      return t;
-    });
-
-    // Preservar la tarea original 'Entrega de propuesta MVP' si no ha sido borrada deliberadamente
-    const deletedIds = getDeletedItemIds();
-    const hasMvpTask = parsed.tasks.some((t) =>
-      t.title.toLowerCase().includes('propuesta mvp')
-    );
-    if (!hasMvpTask && !deletedIds.has('task-propuesta-mvp') && !deletedIds.has('task-seed-1')) {
-      parsed.tasks.unshift({
-        id: 'task-propuesta-mvp',
-        title: 'Entrega de propuesta MVP',
-        description: 'Definir propuesta de valor y landing page para el proyecto.',
-        dueDate: '2026-10-02',
-        priority: 'alta',
-        categoryId: 'cat-examenes',
-        status: 'pendiente',
-        createdAt: '2026-10-01T22:53:48.886Z',
-      });
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-      } catch {}
+      parsed.reminders = [];
     }
 
     return parsed;
@@ -274,8 +257,9 @@ export const getAppData = (): AppData => {
  * Guarda todo el estado de la aplicación en la persistencia
  */
 export const saveAppData = (data: AppData): void => {
+  const key = getStorageKey();
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (error) {
     console.error('Error al guardar en localStorage:', error);
   }
@@ -327,7 +311,6 @@ if (typeof window !== 'undefined') {
 }
 
 export const deleteRemoteTask = async (id: string) => {
-  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -342,7 +325,6 @@ export const deleteRemoteTask = async (id: string) => {
 };
 
 export const deleteRemoteCategory = async (id: string) => {
-  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -357,7 +339,6 @@ export const deleteRemoteCategory = async (id: string) => {
 };
 
 export const deleteRemoteReminder = async (id: string) => {
-  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -372,7 +353,6 @@ export const deleteRemoteReminder = async (id: string) => {
 };
 
 export const deleteRemoteNote = async (id: string) => {
-  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -397,7 +377,6 @@ export const saveTasks = (tasks: Task[]): void => {
   const current = getAppData();
   current.tasks = tasks;
   saveAppData(current);
-  tasks.forEach((t) => unmarkItemDeleted(t.id));
   scheduleBackgroundSync(100);
 };
 
@@ -410,7 +389,6 @@ export const batchAddTasks = (newTasks: Task[]): void => {
   const uniqueNew = newTasks.filter((t) => !existingIds.has(t.id));
   current.tasks = [...uniqueNew, ...current.tasks];
   saveAppData(current);
-  newTasks.forEach((t) => unmarkItemDeleted(t.id));
   scheduleBackgroundSync(100);
 };
 
@@ -425,7 +403,6 @@ export const saveCategories = (categories: Category[]): void => {
   const current = getAppData();
   current.categories = categories;
   saveAppData(current);
-  categories.forEach((c) => unmarkItemDeleted(c.id));
   scheduleBackgroundSync(100);
 };
 
@@ -440,7 +417,6 @@ export const saveNotes = (notes: Note[]): void => {
   const current = getAppData();
   current.notes = notes;
   saveAppData(current);
-  notes.forEach((n) => unmarkItemDeleted(n.id));
   scheduleBackgroundSync(100);
 };
 
@@ -455,7 +431,6 @@ export const saveReminders = (reminders: Reminder[]): void => {
   const current = getAppData();
   current.reminders = reminders;
   saveAppData(current);
-  reminders.forEach((r) => unmarkItemDeleted(r.id));
   scheduleBackgroundSync(100);
 };
 

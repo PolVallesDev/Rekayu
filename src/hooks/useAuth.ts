@@ -11,12 +11,10 @@ import {
   pushAllLocalDataToSupabase,
 } from '../lib/supabase';
 import {
-  getAppData,
   saveAppData,
-  getDeletedItemIds,
   DEFAULT_CATEGORIES,
+  setActiveStorageUser,
 } from '../lib/storage';
-import { AppData, Category, Task, Note, Reminder } from '../types';
 
 export interface UseAuthReturn {
   user: User | null;
@@ -43,7 +41,7 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
   const isSyncingRef = useRef(false);
   const lastSyncTimeRef = useRef(0);
 
-  // Sincronizar datos entre local y la nube de Supabase con fusión inteligente bidireccional
+  // Sincronizar datos desde Supabase (BDD-First: la base de datos es la fuente de verdad)
   const syncWithCloud = useCallback(
     async (force: boolean = false): Promise<{ success: boolean; message: string }> => {
       if (!supabase) {
@@ -55,9 +53,9 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
         return { success: false, message: 'Sincronización en curso.' };
       }
 
-      // Cooldown de 5 segundos para peticiones automáticas
+      // Cooldown de 3 segundos para peticiones automáticas
       const now = Date.now();
-      if (!force && now - lastSyncTimeRef.current < 5000) {
+      if (!force && now - lastSyncTimeRef.current < 3000) {
         return { success: true, message: 'Datos recientemente sincronizados.' };
       }
 
@@ -73,108 +71,22 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
       isSyncingRef.current = true;
       try {
-        const remote = await fetchRemoteAppData(currentUser.id);
-        const local = getAppData();
+        // Enrutar storage al usuario autenticado
+        setActiveStorageUser(currentUser.id);
 
+        const remote = await fetchRemoteAppData(currentUser.id);
         if (!remote) {
           return { success: false, message: 'No se pudieron consultar los datos de Supabase.' };
         }
 
-        const deletedIds = getDeletedItemIds();
+        // Si la cuenta es completamente nueva y no tiene categorías en Supabase, inicializar predeterminadas
+        if (!remote.categories || remote.categories.length === 0) {
+          remote.categories = DEFAULT_CATEGORIES;
+          await pushAllLocalDataToSupabase(remote, currentUser.id);
+        }
 
-        // 1. Fusión de categorías
-        const mergedCategoriesMap = new Map<string, Category>();
-        (remote.categories || []).forEach((c) => {
-          if (!deletedIds.has(c.id)) {
-            mergedCategoriesMap.set(c.id, c);
-          }
-        });
-        (local.categories || []).forEach((c) => {
-          if (!deletedIds.has(c.id) && !mergedCategoriesMap.has(c.id)) {
-            mergedCategoriesMap.set(c.id, c);
-          }
-        });
-        DEFAULT_CATEGORIES.forEach((defCat) => {
-          if (!mergedCategoriesMap.has(defCat.id)) {
-            mergedCategoriesMap.set(defCat.id, defCat);
-          }
-        });
-        const mergedCategories = Array.from(mergedCategoriesMap.values());
-
-        // 2. Fusión de tareas
-        // Supabase tiene preferencia para tareas con el mismo ID,
-        // pero NINGUNA tarea local se descarta.
-        const mergedTasksMap = new Map<string, Task>();
-
-        (remote.tasks || []).forEach((rt) => {
-          if (!deletedIds.has(rt.id)) {
-            mergedTasksMap.set(rt.id, rt);
-          }
-        });
-
-        (local.tasks || []).forEach((lt) => {
-          if (deletedIds.has(lt.id)) return;
-
-          // Si es la propuesta MVP del usuario y choca con un seed que tiene otro título
-          if (
-            (lt.title.toLowerCase().includes('entrega de propuesta mvp') ||
-              lt.title.toLowerCase().includes('propuesta mvp')) &&
-            mergedTasksMap.has(lt.id) &&
-            !mergedTasksMap.get(lt.id)!.title.toLowerCase().includes('propuesta mvp')
-          ) {
-            const mvpTask = { ...lt, id: 'task-propuesta-mvp' };
-            mergedTasksMap.set(mvpTask.id, mvpTask);
-            return;
-          }
-
-          if (!mergedTasksMap.has(lt.id)) {
-            // Tarea local nueva que no está en remoto: se conserva íntegra
-            mergedTasksMap.set(lt.id, lt);
-          }
-        });
-        const mergedTasks = Array.from(mergedTasksMap.values());
-
-        // 3. Fusión de recordatorios
-        const mergedRemindersMap = new Map<string, Reminder>();
-        (remote.reminders || []).forEach((rr) => {
-          if (!deletedIds.has(rr.id)) {
-            mergedRemindersMap.set(rr.id, rr);
-          }
-        });
-        (local.reminders || []).forEach((lr) => {
-          if (!deletedIds.has(lr.id) && !mergedRemindersMap.has(lr.id)) {
-            mergedRemindersMap.set(lr.id, lr);
-          }
-        });
-        const mergedReminders = Array.from(mergedRemindersMap.values());
-
-        // 4. Fusión de notas
-        const mergedNotesMap = new Map<string, Note>();
-        (remote.notes || []).forEach((rn) => {
-          if (!deletedIds.has(rn.id)) {
-            mergedNotesMap.set(rn.id, rn);
-          }
-        });
-        (local.notes || []).forEach((ln) => {
-          if (!deletedIds.has(ln.id) && !mergedNotesMap.has(ln.id)) {
-            mergedNotesMap.set(ln.id, ln);
-          }
-        });
-        const mergedNotes = Array.from(mergedNotesMap.values());
-
-        const mergedData: AppData = {
-          version: 1,
-          categories: mergedCategories,
-          tasks: mergedTasks,
-          reminders: mergedReminders,
-          notes: mergedNotes,
-        };
-
-        // Guardar datos fusionados en localStorage
-        saveAppData(mergedData);
-
-        // Subir los datos combinados inmediatamente a Supabase (así Supabase recibe todas las tareas locales)
-        await pushAllLocalDataToSupabase(mergedData, currentUser.id);
+        // BDD-First: Supabase es la fuente de la verdad para la cuenta activa
+        saveAppData(remote);
 
         lastSyncTimeRef.current = Date.now();
         if (onDataSyncedRef.current) {
@@ -183,7 +95,7 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
         return {
           success: true,
-          message: `Sincronización completada: ${mergedTasks.length} tareas disponibles.`,
+          message: `Sincronización completada: ${remote.tasks.length} tareas disponibles.`,
         };
       } catch (err: any) {
         console.error('Error durante la sincronización:', err);
@@ -195,7 +107,7 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     []
   );
 
-  // Escuchar cambios de sesión una sola vez al montar
+  // Escuchar cambios de sesión
   useEffect(() => {
     if (!supabase) {
       setLoading(false);
@@ -209,9 +121,14 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
       if (!isMounted) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
+      if (currentUser) {
+        setActiveStorageUser(currentUser.id);
+      } else {
+        setActiveStorageUser(null);
+      }
       setLoading(false);
       if (currentUser) {
-        syncWithCloud(false).catch(() => {});
+        syncWithCloud(true).catch(() => {});
       }
     });
 
@@ -224,8 +141,18 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
       setUser(nextUser);
       setLoading(false);
 
+      if (nextUser) {
+        setActiveStorageUser(nextUser.id);
+      } else {
+        setActiveStorageUser(null);
+      }
+
       if (event === 'SIGNED_IN' && nextUser) {
         syncWithCloud(true).catch(() => {});
+      } else if (event === 'SIGNED_OUT') {
+        if (onDataSyncedRef.current) {
+          onDataSyncedRef.current();
+        }
       }
     });
 
@@ -235,17 +162,50 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     };
   }, [syncWithCloud]);
 
-  // Auto-sincronización silenciosa al enfocar la pestaña (con cooldown de 10s)
+  // Auto-sincronización silenciosa al enfocar o visibilizar la pestaña y periódicamente
   useEffect(() => {
-    if (!supabase) return;
-    const handleFocus = () => {
-      if (document.visibilityState === 'visible' && user) {
+    const client = supabase;
+    if (!client || !user) return;
+
+    const handleSyncTrigger = () => {
+      if (document.visibilityState === 'visible') {
         syncWithCloud(false).catch(() => {});
       }
     };
-    window.addEventListener('focus', handleFocus);
+
+    window.addEventListener('focus', handleSyncTrigger);
+    document.addEventListener('visibilitychange', handleSyncTrigger);
+
+    // Intervalo de comprobación periódica cada 30 segundos mientras la pestaña esté activa
+    const intervalTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncWithCloud(false).catch(() => {});
+      }
+    }, 30000);
+
+    // Suscripción a canal de cambios en tiempo real en Supabase de forma segura
+    let channel: any = null;
+    try {
+      const channelId = `rekayu-realtime-${user.id}-${Math.random().toString(36).substring(2, 9)}`;
+      channel = client
+        .channel(channelId)
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          syncWithCloud(true).catch(() => {});
+        });
+      channel.subscribe();
+    } catch {
+      // Si falla la inicialización de realtime, no interrumpir la app
+    }
+
     return () => {
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', handleSyncTrigger);
+      document.removeEventListener('visibilitychange', handleSyncTrigger);
+      clearInterval(intervalTimer);
+      if (channel) {
+        try {
+          client.removeChannel(channel);
+        } catch {}
+      }
     };
   }, [user, syncWithCloud]);
 
@@ -259,7 +219,11 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
   const signOut = async () => {
     await supabaseSignOut();
+    setActiveStorageUser(null);
     setUser(null);
+    if (onDataSyncedRef.current) {
+      onDataSyncedRef.current();
+    }
   };
 
   const updateProfile = async (fullName: string) => {

@@ -8,7 +8,7 @@ import { useReminders } from './hooks/useReminders';
 import { isOverdue, isToday, getDaysRemaining, getTodayString } from './lib/dates';
 import { useRouterNav } from './hooks/useRouterNav';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
-import { batchAddTasks, addImportReminder } from './lib/storage';
+import { batchAddTasks, addImportReminder, getTasks, getReminders } from './lib/storage';
 
 import { FloatingNav } from './components/FloatingNav';
 import { Header } from './components/Header';
@@ -203,14 +203,22 @@ export const App: React.FC = () => {
     }
   };
 
-  // Sincronización al restaurar copia de seguridad
+  // Sincronización al restaurar copia de seguridad o refrescar desde la nube
   const handleDataRestored = useCallback(() => {
     refreshTasks();
     refreshCategories();
     refreshNotes();
     refreshReminders();
-    setSelectedTask(null);
-    setSelectedReminder(null);
+    setSelectedTask((prev) => {
+      if (!prev) return null;
+      const latest = getTasks().find((t) => t.id === prev.id);
+      return latest || null;
+    });
+    setSelectedReminder((prev) => {
+      if (!prev) return null;
+      const latest = getReminders().find((r) => r.id === prev.id);
+      return latest || null;
+    });
   }, [refreshTasks, refreshCategories, refreshNotes, refreshReminders]);
 
   // Sincronización en la nube autónoma y gestión de sesión a nivel de aplicación
