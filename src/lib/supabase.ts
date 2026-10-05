@@ -78,6 +78,20 @@ export async function signOut() {
   if (error) throw error;
 }
 
+/**
+ * Actualiza los datos del perfil del usuario (nombre completo).
+ */
+export async function updateUserProfile(fullName: string): Promise<User | null> {
+  if (!supabase) throw new Error('Supabase no está configurado');
+  const { data, error } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName.trim(),
+    },
+  });
+  if (error) throw error;
+  return data.user;
+}
+
 // ==========================================
 // CONVERSORES ENTRE MODELO LOCAL Y BASE DE DATOS
 // ==========================================
@@ -228,24 +242,58 @@ export async function pushAllLocalDataToSupabase(data: AppData, userId: string):
   if (!supabase) return;
   try {
     // 1. Categorías primero (por claves foráneas)
-    if (data.categories.length > 0) {
+    if (data.categories && data.categories.length > 0) {
       const dbCats = data.categories.map((c) => categoryToDb(c, userId));
-      await supabase.from('categories').upsert(dbCats);
+      const { error: catErr } = await supabase.from('categories').upsert(dbCats, { onConflict: 'id' });
+      if (catErr) {
+        console.warn('Fallo en upsert por lotes de categorías, reintentando una a una:', catErr);
+        for (const cat of dbCats) {
+          await supabase.from('categories').upsert(cat, { onConflict: 'id' });
+        }
+      }
     }
+
     // 2. Tareas
-    if (data.tasks.length > 0) {
+    if (data.tasks && data.tasks.length > 0) {
       const dbTasks = data.tasks.map((t) => taskToDb(t, userId));
-      await supabase.from('tasks').upsert(dbTasks);
+      const { error: taskErr } = await supabase.from('tasks').upsert(dbTasks, { onConflict: 'id' });
+      if (taskErr) {
+        console.warn('Fallo en upsert por lotes de tareas, reintentando una a una:', taskErr);
+        for (const t of dbTasks) {
+          const { error: singleErr } = await supabase.from('tasks').upsert(t, { onConflict: 'id' });
+          if (singleErr) {
+            console.warn(`Error al guardar tarea individual ${t.id}:`, singleErr);
+            // Si falla por clave foránea en category_id, reintentar asociándola a null
+            if (singleErr.code === '23503' || singleErr.message?.includes('foreign key')) {
+              await supabase.from('tasks').upsert({ ...t, category_id: null }, { onConflict: 'id' });
+            }
+          }
+        }
+      }
     }
+
     // 3. Recordatorios
     if (data.reminders && data.reminders.length > 0) {
       const dbRems = data.reminders.map((r) => reminderToDb(r, userId));
-      await supabase.from('reminders').upsert(dbRems);
+      const { error: remErr } = await supabase.from('reminders').upsert(dbRems, { onConflict: 'id' });
+      if (remErr) {
+        console.warn('Fallo en upsert por lotes de recordatorios, reintentando uno a uno:', remErr);
+        for (const r of dbRems) {
+          await supabase.from('reminders').upsert(r, { onConflict: 'id' });
+        }
+      }
     }
+
     // 4. Notas
     if (data.notes && data.notes.length > 0) {
       const dbNotes = data.notes.map((n) => noteToDb(n, userId));
-      await supabase.from('notes').upsert(dbNotes);
+      const { error: noteErr } = await supabase.from('notes').upsert(dbNotes, { onConflict: 'id' });
+      if (noteErr) {
+        console.warn('Fallo en upsert por lotes de notas, reintentando una a una:', noteErr);
+        for (const n of dbNotes) {
+          await supabase.from('notes').upsert(n, { onConflict: 'id' });
+        }
+      }
     }
   } catch (err) {
     console.error('Error al subir datos locales a Supabase:', err);

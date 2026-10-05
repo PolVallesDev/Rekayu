@@ -13,8 +13,6 @@ import {
   Info,
   Heart,
   Coffee,
-  Cloud,
-  ArrowRight,
 } from 'lucide-react';
 import { Category } from '../types';
 import {
@@ -24,7 +22,6 @@ import {
   saveSupportConfig,
   SupportConfig,
 } from '../lib/storage';
-import { useAuth } from '../hooks/useAuth';
 
 interface SettingsPageProps {
   isDark: boolean;
@@ -33,7 +30,6 @@ interface SettingsPageProps {
   onOpenCategoryModal: () => void;
   onDataRestored: () => void;
   onGoHome?: () => void;
-  onNavigateToAccount?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -43,7 +39,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onOpenCategoryModal,
   onDataRestored,
   onGoHome,
-  onNavigateToAccount,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
@@ -51,8 +46,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [loading, setLoading] = useState(false);
   const [supportConfig, setSupportConfig] = useState<SupportConfig>(getSupportConfig);
-
-  const { user } = useAuth(onDataRestored);
 
   const handleToggleBuyCoffee = () => {
     const nextVal = !supportConfig.enableBuyCoffee;
@@ -209,57 +202,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </section>
 
-      {/* 3. Bloque: Sincronización en la Nube y Perfil */}
-      <section className="bg-calma-surface rounded-2xl p-5 border border-calma-line shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Cloud className="w-4 h-4 text-calma-accent" />
-            <h2 className="text-[15px] font-medium text-calma-ink m-0">
-              Sincronización en la Nube
-            </h2>
-          </div>
-          {user ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Sincronización automática activa
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-calma-bg border border-calma-line text-calma-muted">
-              Modo Local
-            </span>
-          )}
-        </div>
-
-        <p className="text-[13px] text-calma-muted leading-relaxed m-0">
-          La app revisa y sincroniza automáticamente tus tareas, categorías, notas y recordatorios en segundo plano con Supabase.
-        </p>
-
-        <div className="p-3.5 bg-calma-bg/60 rounded-xl border border-calma-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-[13.5px] font-medium text-calma-ink m-0 leading-tight">
-              {user ? user.email : 'Modo local sin cuenta'}
-            </p>
-            <p className="text-[11.5px] text-calma-muted m-0 mt-0.5">
-              {user
-                ? 'Conectado a tu cuenta de Supabase'
-                : 'Tus datos se guardan exclusivamente en este navegador'}
-            </p>
-          </div>
-
-          {onNavigateToAccount && (
-            <button
-              type="button"
-              onClick={onNavigateToAccount}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-calma-surface border border-calma-line hover:border-calma-accent text-calma-ink text-[12.5px] font-medium transition-all shadow-xs cursor-pointer flex-none"
-            >
-              <span>Gestionar en Mi Perfil</span>
-              <ArrowRight className="w-3.5 h-3.5 text-calma-muted" />
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* 4. Bloque: Almacenamiento y Copia de Seguridad */}
+      {/* 3. Bloque: Almacenamiento y Copia de Seguridad */}
       <section className="bg-calma-surface rounded-2xl p-5 border border-calma-line shadow-xs space-y-4">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-calma-accent" />

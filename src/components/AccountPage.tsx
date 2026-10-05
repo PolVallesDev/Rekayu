@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User as UserIcon,
-  Cloud,
   CheckCircle,
-  HardDrive,
   LogOut,
   Sparkles,
   ShieldCheck,
@@ -12,7 +10,10 @@ import {
   FileText,
   AlertCircle,
   ArrowRight,
+  Pencil,
+  Check,
 } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
 import { useAuth } from '../hooks/useAuth';
 import { AuthModal } from './AuthModal';
 import { getAppData } from '../lib/storage';
@@ -22,6 +23,10 @@ interface AccountPageProps {
   onDataRestored?: () => void;
   onNavigateToSettings?: () => void;
   onOpenAuth?: () => void;
+  currentUser?: User | null;
+  isConfigured?: boolean;
+  onSignOut?: () => Promise<void>;
+  onUpdateProfile?: (fullName: string) => Promise<User | null>;
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({
@@ -29,10 +34,22 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   onDataRestored,
   onNavigateToSettings,
   onOpenAuth,
+  currentUser,
+  isConfigured: propIsConfigured,
+  onSignOut,
+  onUpdateProfile,
 }) => {
-  const { user, isConfigured, signOut } = useAuth(onDataRestored);
+  const authFromHook = useAuth(onDataRestored);
+  const user = currentUser !== undefined ? currentUser : authFromHook.user;
+  const isConfigured = propIsConfigured !== undefined ? propIsConfigured : authFromHook.isConfigured;
+  const signOut = onSignOut || authFromHook.signOut;
+  const updateProfile = onUpdateProfile || authFromHook.updateProfile;
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   // Obtener estadísticas de uso local
   const appData = getAppData();
@@ -62,6 +79,28 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         year: 'numeric',
       })
     : null;
+
+  useEffect(() => {
+    setNameInput(fullName);
+  }, [fullName]);
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nameInput.trim()) return;
+    setIsSavingName(true);
+    setFeedbackMessage(null);
+    try {
+      await updateProfile(nameInput.trim());
+      setIsEditing(false);
+      setFeedbackMessage('Nombre actualizado correctamente.');
+      setTimeout(() => setFeedbackMessage(null), 3000);
+      if (onDataRestored) onDataRestored();
+    } catch {
+      setFeedbackMessage('No se pudo actualizar el nombre.');
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -98,48 +137,108 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           Mi Perfil
         </h1>
         <p className="text-calma-muted text-[13px] sm:text-[15px] mt-1.5 m-0">
-          Identidad, sincronización y estado de tus datos
+          Identidad y preferencias de tu cuenta
         </p>
       </div>
 
       {/* Tarjeta de perfil principal */}
-      <section className="bg-calma-surface rounded-3xl p-6 sm:p-7 border border-calma-line shadow-xs space-y-6">
+      <section className="bg-calma-surface rounded-3xl p-6 sm:p-7 border border-calma-line shadow-xs">
         {user ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              {/* Avatar grande con iniciales */}
-              <div className="w-16 h-16 rounded-2xl bg-calma-accent-soft border border-calma-accent/30 flex items-center justify-center text-calma-accent font-semibold text-[22px] shadow-xs flex-none">
-                {initials}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-[19px] font-semibold text-calma-ink m-0 leading-tight">
-                    {fullName || 'Usuario Rekayu'}
-                  </h2>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    En línea
-                  </span>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                {/* Avatar grande con iniciales */}
+                <div className="w-16 h-16 rounded-2xl bg-calma-accent-soft border border-calma-accent/30 flex items-center justify-center text-calma-accent font-semibold text-[22px] shadow-xs flex-none">
+                  {initials}
                 </div>
-                <p className="text-[13.5px] text-calma-muted m-0">{user.email}</p>
-                {memberSince && (
-                  <p className="text-[12px] text-calma-muted/80 flex items-center gap-1.5 m-0 pt-0.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Miembro desde {memberSince}</span>
-                  </p>
-                )}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[19px] font-semibold text-calma-ink m-0 leading-tight">
+                      {fullName || 'Usuario'}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNameInput(fullName);
+                        setIsEditing(!isEditing);
+                      }}
+                      className="p-1.5 rounded-lg text-calma-muted hover:text-calma-ink hover:bg-calma-bg transition-colors cursor-pointer"
+                      title="Modificar nombre"
+                      aria-label="Modificar nombre"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      En línea
+                    </span>
+                  </div>
+                  <p className="text-[13.5px] text-calma-muted m-0">{user.email}</p>
+                  {memberSince && (
+                    <p className="text-[12px] text-calma-muted/80 flex items-center gap-1.5 m-0 pt-0.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Miembro desde {memberSince}</span>
+                    </p>
+                  )}
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-calma-bg border border-calma-line hover:border-calma-warn/60 hover:text-calma-warn text-calma-muted text-[13px] font-medium transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{isSigningOut ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-calma-bg border border-calma-line hover:border-calma-warn/60 hover:text-calma-warn text-calma-muted text-[13px] font-medium transition-all shadow-xs cursor-pointer self-start sm:self-auto"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>{isSigningOut ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
-            </button>
+            {/* Formulario de edición rápida de nombre */}
+            {isEditing && (
+              <form
+                onSubmit={handleSaveName}
+                className="p-4 rounded-2xl bg-calma-bg border border-calma-line flex flex-col sm:flex-row sm:items-center gap-3 animate-in fade-in duration-200"
+              >
+                <div className="flex-1">
+                  <label htmlFor="edit-name" className="block text-[12px] font-medium text-calma-muted mb-1">
+                    Nombre completo o usuario
+                  </label>
+                  <input
+                    id="edit-name"
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    placeholder="Tu nombre completo"
+                    className="w-full bg-calma-surface border border-calma-line rounded-xl px-3 py-1.5 text-[13.5px] text-calma-ink placeholder:text-calma-muted focus:outline-none focus:ring-1 focus:ring-calma-accent"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex items-center gap-2 sm:self-end">
+                  <button
+                    type="submit"
+                    disabled={isSavingName || !nameInput.trim()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-calma-accent text-white text-[13px] font-medium hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{isSavingName ? 'Guardando...' : 'Guardar'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-3 py-1.5 rounded-xl bg-calma-surface border border-calma-line text-calma-muted hover:text-calma-ink text-[13px] font-medium transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {feedbackMessage && (
+              <p className="text-[12px] text-calma-accent font-medium m-0 animate-in fade-in">
+                {feedbackMessage}
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -153,11 +252,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     Modo Local
                   </h2>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-calma-bg border border-calma-line text-calma-muted">
-                    Sin cuenta
+                    localStorage
                   </span>
                 </div>
                 <p className="text-[13.5px] text-calma-muted m-0">
-                  Tus datos se guardan únicamente en el navegador de este dispositivo.
+                  Tus datos se guardan únicamente en el almacenamiento local de este navegador.
                 </p>
               </div>
             </div>
@@ -165,55 +264,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <button
               type="button"
               onClick={() => (onOpenAuth ? onOpenAuth() : setIsAuthModalOpen(true))}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-calma-accent text-white hover:opacity-95 text-[13.5px] font-medium transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-calma-accent text-white hover:opacity-95 text-[13.5px] font-medium transition-all shadow-xs cursor-pointer self-start sm:self-auto flex-none"
             >
               <Sparkles className="w-4 h-4" />
               <span>Iniciar sesión o Registrarse</span>
             </button>
           </div>
         )}
-
-        {/* Separador sutil */}
-        <hr className="border-t border-calma-line/60 m-0" />
-
-        {/* Estado de sincronización autónoma (sin botones manuales) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="p-4 rounded-2xl bg-calma-bg border border-calma-line flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-calma-surface border border-calma-line flex items-center justify-center text-calma-accent flex-none">
-              <Cloud className="w-4.5 h-4.5" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-[13.5px] font-medium text-calma-ink m-0 flex items-center gap-1.5">
-                <span>Nube Supabase</span>
-                {user ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                ) : (
-                  <span className="text-[11px] font-normal text-calma-muted">(Desconectada)</span>
-                )}
-              </h3>
-              <p className="text-[12px] text-calma-muted leading-relaxed m-0">
-                {user
-                  ? 'Sincronización en segundo plano activa. Tus cambios se respaldan de forma silenciosa al instante.'
-                  : 'Inicia sesión para sincronizar automáticamente con tu iPhone u otros dispositivos.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-calma-bg border border-calma-line flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-calma-surface border border-calma-line flex items-center justify-center text-calma-accent flex-none">
-              <HardDrive className="w-4.5 h-4.5" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-[13.5px] font-medium text-calma-ink m-0 flex items-center gap-1.5">
-                <span>Almacenamiento Local (Local-First)</span>
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-              </h3>
-              <p className="text-[12px] text-calma-muted leading-relaxed m-0">
-                La app carga y responde a velocidad instantánea sin importar si tienes internet o mala cobertura.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Resumen de actividad / estadísticas del usuario */}

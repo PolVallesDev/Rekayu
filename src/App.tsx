@@ -31,6 +31,7 @@ import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { AccountPage } from './components/AccountPage';
 import { WelcomeModal } from './components/WelcomeModal';
 import { AuthModal } from './components/AuthModal';
+import { useAuth } from './hooks/useAuth';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -211,6 +212,9 @@ export const App: React.FC = () => {
     setSelectedTask(null);
     setSelectedReminder(null);
   }, [refreshTasks, refreshCategories, refreshNotes, refreshReminders]);
+
+  // Sincronización en la nube autónoma y gestión de sesión a nivel de aplicación
+  const { user, isConfigured, signOut, updateProfile } = useAuth(handleDataRestored);
 
   // Navegar al inicio (Tareas -> Hoy) y cerrar paneles abiertos
   const handleGoHome = () => {
@@ -406,6 +410,10 @@ export const App: React.FC = () => {
               onDataRestored={handleDataRestored}
               onNavigateToSettings={() => setActiveNav('ajustes')}
               onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
+              currentUser={user}
+              isConfigured={isConfigured}
+              onSignOut={signOut}
+              onUpdateProfile={updateProfile}
             />
           )}
 
@@ -418,7 +426,6 @@ export const App: React.FC = () => {
               onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
               onDataRestored={handleDataRestored}
               onGoHome={handleGoHome}
-              onNavigateToAccount={() => setActiveNav('cuenta')}
             />
           )}
         </div>
