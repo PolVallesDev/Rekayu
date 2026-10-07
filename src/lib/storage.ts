@@ -377,6 +377,8 @@ export const migrateGuestDataToUser = (userId: string): AppData => {
         userData.categories = [...userData.categories, ...guestCatsToMigrate];
 
         localStorage.setItem(userKey, JSON.stringify(userData));
+        // Subir inmediatamente a Supabase
+        pushAllLocalDataToSupabase(userData, userId, deletedIds).catch(() => {});
       }
     }
 
@@ -393,7 +395,7 @@ export const migrateGuestDataToUser = (userId: string): AppData => {
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-export const scheduleBackgroundSync = (delayMs: number = 200) => {
+export const scheduleBackgroundSync = (delayMs: number = 0) => {
   const client = supabase;
   if (!client) return;
   if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
@@ -504,7 +506,7 @@ export const saveTasks = (tasks: Task[]): void => {
   current.tasks = tasks;
   saveAppData(current);
   tasks.forEach((t) => clearDeletedItem(t.id));
-  scheduleBackgroundSync(150);
+  scheduleBackgroundSync(0);
 };
 
 /**
@@ -517,7 +519,7 @@ export const batchAddTasks = (newTasks: Task[]): void => {
   current.tasks = [...uniqueNew, ...current.tasks];
   saveAppData(current);
   newTasks.forEach((t) => clearDeletedItem(t.id));
-  scheduleBackgroundSync(150);
+  scheduleBackgroundSync(0);
 };
 
 /**
@@ -532,7 +534,7 @@ export const saveCategories = (categories: Category[]): void => {
   current.categories = categories;
   saveAppData(current);
   categories.forEach((c) => clearDeletedItem(c.id));
-  scheduleBackgroundSync(150);
+  scheduleBackgroundSync(0);
 };
 
 /**
@@ -547,7 +549,7 @@ export const saveNotes = (notes: Note[]): void => {
   current.notes = notes;
   saveAppData(current);
   notes.forEach((n) => clearDeletedItem(n.id));
-  scheduleBackgroundSync(150);
+  scheduleBackgroundSync(0);
 };
 
 /**
@@ -562,7 +564,7 @@ export const saveReminders = (reminders: Reminder[]): void => {
   current.reminders = reminders;
   saveAppData(current);
   reminders.forEach((r) => clearDeletedItem(r.id));
-  scheduleBackgroundSync(150);
+  scheduleBackgroundSync(0);
 };
 
 /**

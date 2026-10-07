@@ -119,6 +119,23 @@ export const Header: React.FC<HeaderProps> = ({
           {summary}
         </p>
       </div>
+
+      {/* Aviso sereno si el dispositivo está en Modo local */}
+      {syncStatus === 'local' && onOpenAuth && (
+        <div className="mt-3 px-3.5 py-2 rounded-2xl bg-calma-surface border border-calma-line shadow-xs flex items-center justify-between gap-3 text-[12.5px] animate-in fade-in">
+          <div className="flex items-center gap-2 text-calma-muted truncate">
+            <span className="w-2 h-2 rounded-full bg-amber-400 flex-none" />
+            <span className="truncate">Modo local · Inicia sesión para ver y sincronizar tus tareas del móvil</span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenAuth}
+            className="px-3 py-1 rounded-xl bg-calma-accent text-white font-medium text-[12px] hover:opacity-90 transition-opacity cursor-pointer flex-none shadow-xs"
+          >
+            Conectar
+          </button>
+        </div>
+      )}
     </header>
   );
 };

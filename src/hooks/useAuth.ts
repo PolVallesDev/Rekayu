@@ -195,8 +195,10 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
         if (
           hasLocalChangesToPush ||
           deletedIds.size > 0 ||
-          (remote.categories || []).length === 0 ||
-          (remote.tasks || []).length < mergedTasks.length
+          (remote.categories || []).length < mergedCategories.length ||
+          (remote.tasks || []).length < mergedTasks.length ||
+          (remote.reminders || []).length < mergedReminders.length ||
+          (remote.notes || []).length < mergedNotes.length
         ) {
           await pushAllLocalDataToSupabase(mergedData, currentUser.id, deletedIds);
         }
@@ -292,7 +294,7 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
     const handleSyncTrigger = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        syncWithCloud(false).catch(() => {});
+        syncWithCloud(true).catch(() => {});
       }
     };
 
@@ -309,12 +311,12 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Intervalo de comprobación periódica cada 30 segundos mientras la pestaña esté activa
+    // Intervalo de comprobación periódica cada 10 segundos mientras la pestaña esté activa
     const intervalTimer = setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         syncWithCloud(false).catch(() => {});
       }
-    }, 30000);
+    }, 10000);
 
     // Suscripción a canal Realtime en Supabase
     let channel: any = null;
