@@ -11,17 +11,12 @@ import {
   Palette,
   Tag,
   Info,
-  Heart,
-  Coffee,
   Trash2,
 } from 'lucide-react';
 import { Category } from '../types';
 import {
   exportAppDataAsJSON,
   importAppDataFromJSON,
-  getSupportConfig,
-  saveSupportConfig,
-  SupportConfig,
 } from '../lib/storage';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -49,14 +44,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     null
   );
   const [loading, setLoading] = useState(false);
-  const [supportConfig, setSupportConfig] = useState<SupportConfig>(getSupportConfig);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-
-  const handleToggleBuyCoffee = () => {
-    const nextVal = !supportConfig.enableBuyCoffee;
-    const updated = saveSupportConfig({ enableBuyCoffee: nextVal });
-    setSupportConfig(updated);
-  };
 
   const handleExport = () => {
     try {
@@ -263,53 +251,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </section>
 
-      {/* 4. Bloque: Apoyo y Proyecto Indie */}
-      <section className="bg-calma-surface rounded-2xl p-5 border border-calma-line shadow-xs space-y-4">
-        <div className="flex items-center gap-2">
-          <Heart className="w-4 h-4 text-calma-warn" />
-          <h2 className="text-[15px] font-medium text-calma-ink m-0">
-            Apoyo y Proyecto Indie
-          </h2>
-        </div>
-
-        <p className="text-[13px] text-calma-muted leading-relaxed m-0">
-          Rekayu es un desarrollo independiente y gratuito sin publicidad. Puedes activar o desactivar la opción de donación ("Invitar a un café") en la ventana de apoyo según desees.
-        </p>
-
-        {/* Interruptor de Buy Me a Coffee */}
-        <div className="flex items-center justify-between p-3.5 bg-calma-bg/60 rounded-xl border border-calma-line">
-          <div className="flex items-center gap-2.5 mr-3">
-            <Coffee className="w-4 h-4 text-calma-accent flex-none" />
-            <div>
-              <p className="text-[13.5px] font-medium text-calma-ink m-0">
-                Opción de "Invitar a un café"
-              </p>
-              <p className="text-[11.5px] text-calma-muted m-0 mt-0.5">
-                {supportConfig.enableBuyCoffee
-                  ? 'Activado: se muestra el botón en la ventana de apoyo'
-                  : 'Desactivado: oculto, sin solicitudes de donación'}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleToggleBuyCoffee}
-            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer flex-none ${
-              supportConfig.enableBuyCoffee ? 'bg-calma-accent' : 'bg-calma-muted/30'
-            }`}
-            aria-label="Alternar opción de donación"
-          >
-            <div
-              className={`bg-white w-4 h-4 rounded-full shadow-xs transform transition-transform duration-200 ${
-                supportConfig.enableBuyCoffee ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </section>
-
-      {/* 5. Bloque: Información de la versión */}
+      {/* 4. Bloque: Información de la versión */}
       <section className="bg-calma-surface/60 rounded-2xl p-5 border border-calma-line/60">
         <div className="flex items-start gap-3">
           <Info className="w-4 h-4 text-calma-muted mt-0.5 flex-none" />

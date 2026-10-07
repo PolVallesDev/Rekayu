@@ -687,29 +687,16 @@ export const importAppDataFromJSON = async (
   });
 };
 
-// Configuración de apoyo e incidencias
+// Configuración de apoyo e incidencias (controlada por código / admins)
 import { SupportConfig, DEFAULT_SUPPORT_CONFIG } from './supportConfig';
 export type { SupportConfig };
 
-const SUPPORT_CONFIG_KEY = 'rekayu_support_config';
-
 export const getSupportConfig = (): SupportConfig => {
-  try {
-    const raw = localStorage.getItem(SUPPORT_CONFIG_KEY);
-    if (!raw) return DEFAULT_SUPPORT_CONFIG;
-    return { ...DEFAULT_SUPPORT_CONFIG, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_SUPPORT_CONFIG;
-  }
+  return DEFAULT_SUPPORT_CONFIG;
 };
 
+// Función preparada para cuando se implemente un panel de administración con persistencia
 export const saveSupportConfig = (config: Partial<SupportConfig>): SupportConfig => {
-  try {
-    const current = getSupportConfig();
-    const updated = { ...current, ...config };
-    localStorage.setItem(SUPPORT_CONFIG_KEY, JSON.stringify(updated));
-    return updated;
-  } catch {
-    return DEFAULT_SUPPORT_CONFIG;
-  }
+  return { ...DEFAULT_SUPPORT_CONFIG, ...config };
 };
+
