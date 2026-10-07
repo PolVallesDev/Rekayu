@@ -32,7 +32,6 @@ import { AccountPage } from './components/AccountPage';
 import { WelcomeModal } from './components/WelcomeModal';
 import { AuthModal } from './components/AuthModal';
 import { useAuth } from './hooks/useAuth';
-import { setupRekayuDebug } from './lib/debug';
 
 export const App: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -234,11 +233,6 @@ export const App: React.FC = () => {
     signUp,
     syncWithCloud,
   } = useAuth(handleDataRestored);
-
-  // Inicializar herramientas de depuración en ventana (window.rekayuDebug)
-  useEffect(() => {
-    setupRekayuDebug(handleDataRestored);
-  }, [handleDataRestored]);
 
   // Navegar al inicio (Tareas -> Hoy) y cerrar paneles abiertos
   const handleGoHome = () => {
