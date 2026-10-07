@@ -95,11 +95,20 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
         migrateGuestDataToUser(currentUser.id);
 
         // 3. Consultar datos en la nube
+        console.log(`[Rekayu Sync] 📥 Sincronizando con Supabase (usuario: ${currentUser.email || currentUser.id})...`);
         const remote = await fetchRemoteAppData(currentUser.id);
         if (!remote) {
+          console.warn('[Rekayu Sync] ⚠️ No se pudieron consultar los datos de Supabase.');
           setSyncStatus('offline');
           return { success: false, message: 'No se pudieron consultar los datos de Supabase.' };
         }
+
+        console.log('[Rekayu Sync] ✅ Datos recibidos de Supabase:', {
+          tareas: remote.tasks?.length || 0,
+          recordatorios: remote.reminders?.length || 0,
+          notas: remote.notes?.length || 0,
+          categorías: remote.categories?.length || 0,
+        });
 
         // 4. Supabase es la fuente de verdad absoluta para el usuario autenticado
         const categories =
