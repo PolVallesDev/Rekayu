@@ -11,14 +11,12 @@ import {
   pushAllLocalDataToSupabase,
 } from '../lib/supabase';
 import {
-  getAppData,
   saveAppData,
   DEFAULT_CATEGORIES,
   setActiveStorageUser,
   migrateGuestDataToUser,
-  getDeletedItemIds,
 } from '../lib/storage';
-import { AppData, Category, Task, Note, Reminder } from '../types';
+import { AppData } from '../types';
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'local';
 
@@ -103,104 +101,26 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
           return { success: false, message: 'No se pudieron consultar los datos de Supabase.' };
         }
 
-        const local = getAppData();
-        const deletedIds = getDeletedItemIds();
+        // 4. Supabase es la fuente de verdad absoluta para el usuario autenticado
+        const categories =
+          remote.categories && remote.categories.length > 0
+            ? remote.categories
+            : DEFAULT_CATEGORIES;
 
-        // 4. FUSIÓN INTELIGENTE BIDIRECCIONAL (Sin pérdida de datos locales)
-        let hasLocalChangesToPush = false;
-
-        // A) Categorías
-        const mergedCatsMap = new Map<string, Category>();
-        (remote.categories || []).forEach((rc) => {
-          if (!deletedIds.has(rc.id)) {
-            mergedCatsMap.set(rc.id, rc);
-          }
-        });
-        (local.categories || []).forEach((lc) => {
-          if (deletedIds.has(lc.id)) return;
-          if (!mergedCatsMap.has(lc.id)) {
-            mergedCatsMap.set(lc.id, lc);
-            hasLocalChangesToPush = true;
-          }
-        });
-        DEFAULT_CATEGORIES.forEach((dc) => {
-          if (!mergedCatsMap.has(dc.id) && !deletedIds.has(dc.id)) {
-            mergedCatsMap.set(dc.id, dc);
-            hasLocalChangesToPush = true;
-          }
-        });
-        const mergedCategories = Array.from(mergedCatsMap.values());
-
-        // B) Tareas
-        const mergedTasksMap = new Map<string, Task>();
-        (remote.tasks || []).forEach((rt) => {
-          if (!deletedIds.has(rt.id)) {
-            mergedTasksMap.set(rt.id, rt);
-          }
-        });
-        (local.tasks || []).forEach((lt) => {
-          if (deletedIds.has(lt.id)) return;
-          if (!mergedTasksMap.has(lt.id)) {
-            // Tarea local creada que aún no está en la nube: preservarla y subirla
-            mergedTasksMap.set(lt.id, lt);
-            hasLocalChangesToPush = true;
-          }
-        });
-        const mergedTasks = Array.from(mergedTasksMap.values());
-
-        // C) Recordatorios
-        const mergedRemsMap = new Map<string, Reminder>();
-        (remote.reminders || []).forEach((rr) => {
-          if (!deletedIds.has(rr.id)) {
-            mergedRemsMap.set(rr.id, rr);
-          }
-        });
-        (local.reminders || []).forEach((lr) => {
-          if (deletedIds.has(lr.id)) return;
-          if (!mergedRemsMap.has(lr.id)) {
-            mergedRemsMap.set(lr.id, lr);
-            hasLocalChangesToPush = true;
-          }
-        });
-        const mergedReminders = Array.from(mergedRemsMap.values());
-
-        // D) Notas
-        const mergedNotesMap = new Map<string, Note>();
-        (remote.notes || []).forEach((rn) => {
-          if (!deletedIds.has(rn.id)) {
-            mergedNotesMap.set(rn.id, rn);
-          }
-        });
-        (local.notes || []).forEach((ln) => {
-          if (deletedIds.has(ln.id)) return;
-          if (!mergedNotesMap.has(ln.id)) {
-            mergedNotesMap.set(ln.id, ln);
-            hasLocalChangesToPush = true;
-          }
-        });
-        const mergedNotes = Array.from(mergedNotesMap.values());
-
-        const mergedData: AppData = {
+        const syncedData: AppData = {
           version: 1,
-          categories: mergedCategories,
-          tasks: mergedTasks,
-          reminders: mergedReminders,
-          notes: mergedNotes,
+          categories,
+          tasks: remote.tasks || [],
+          reminders: remote.reminders || [],
+          notes: remote.notes || [],
         };
 
-        // 5. Guardar en local storage
-        saveAppData(mergedData);
+        // Guardar en la caché local para lectura instantánea sin parpadeo
+        saveAppData(syncedData);
 
-        // 6. Si hay cambios locales o la nube estaba vacía o hay borrados que purgar, actualizar Supabase
-        if (
-          hasLocalChangesToPush ||
-          deletedIds.size > 0 ||
-          (remote.categories || []).length < mergedCategories.length ||
-          (remote.tasks || []).length < mergedTasks.length ||
-          (remote.reminders || []).length < mergedReminders.length ||
-          (remote.notes || []).length < mergedNotes.length
-        ) {
-          await pushAllLocalDataToSupabase(mergedData, currentUser.id, deletedIds);
+        // Si la cuenta en la nube no tenía categorías inicializadas, subirlas
+        if (!remote.categories || remote.categories.length === 0) {
+          await pushAllLocalDataToSupabase(syncedData, currentUser.id);
         }
 
         lastSyncTimeRef.current = Date.now();
@@ -213,7 +133,7 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
         return {
           success: true,
-          message: `Sincronización completada: ${mergedTasks.length} tareas disponibles.`,
+          message: `Sincronización completada: ${syncedData.tasks.length} tareas, ${syncedData.reminders?.length || 0} recordatorios.`,
         };
       } catch (err: any) {
         console.error('Error durante la sincronización:', err);

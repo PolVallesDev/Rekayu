@@ -379,6 +379,8 @@ export const migrateGuestDataToUser = (userId: string): AppData => {
         localStorage.setItem(userKey, JSON.stringify(userData));
         // Subir inmediatamente a Supabase
         pushAllLocalDataToSupabase(userData, userId, deletedIds).catch(() => {});
+        // Limpiar datos de invitado para que no se dupliquen ni resuciten nunca más
+        localStorage.removeItem(GUEST_STORAGE_KEY);
       }
     }
 
