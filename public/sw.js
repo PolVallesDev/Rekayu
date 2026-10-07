@@ -1,5 +1,5 @@
 // Rekayu Service Worker para soporte PWA offline y carga instantánea en iOS/Android
-const CACHE_NAME = 'rekayu-cache-v1';
+const CACHE_NAME = 'rekayu-cache-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -23,14 +23,17 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activación: limpiar cachés obsoletas
+// Activación: limpiar cachés obsoletas (especialmente rekayu-cache-v1 que cacheaba Supabase!)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+          .map((key) => {
+            console.log('[SW] Purgando caché obsoleta:', key);
+            return caches.delete(key);
+          })
       );
     })
   );
@@ -41,12 +44,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Solo peticiones HTTP/HTTPS y método GET
-  if (!request.url.startsWith('http') || request.method !== 'GET') {
-    return;
+  // 1. REGLA DE ORO: NUNCA interceptar Supabase ni APIs externas ni peticiones que no sean GET
+  if (
+    !request.url.startsWith('http') ||
+    request.method !== 'GET' ||
+    request.url.includes('supabase.co') ||
+    !request.url.startsWith(self.location.origin)
+  ) {
+    return; // Bypass completo: directo a la red sin tocar caché
   }
 
-  // Estrategia para navegación (HTML): Network first, fallback a caché
+  // 2. Estrategia para navegación (HTML): Network first, fallback a caché
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -66,7 +74,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estrategia para recursos estáticos (imágenes, fuentes, css, js): Cache first, fallback a red
+  // 3. Estrategia para recursos estáticos locales (assets compilados, iconos)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -82,7 +90,6 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Si falla y es una imagen o icono, devolver fallback si existe
           if (request.destination === 'image') {
             return caches.match('/icons/apple-touch-icon.png');
           }

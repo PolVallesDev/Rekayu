@@ -155,14 +155,17 @@ export function setupRekayuDebug(onRefresh?: () => void) {
      * Limpia la caché local de este navegador para empezar 100% limpio
      */
     clearCache() {
-      console.log('🧹 [Rekayu Debug] Vaciando localStorage de Rekayu...');
+      console.log('🧹 [Rekayu Debug] Vaciando localStorage y caché de Service Worker...');
       const keys = ['rekayu_app_data_v1', 'rekayu_deleted_ids_v1'];
       const activeUser = getActiveStorageUser();
       if (activeUser) {
         keys.push(`rekayu_user_${activeUser}_v1`);
       }
       keys.forEach((k) => localStorage.removeItem(k));
-      console.log('✅ Caché borrada. Si recargas (F5), se cargarán únicamente los datos de Supabase.');
+      if ('caches' in window) {
+        caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
+      }
+      console.log('✅ Caché borrada al 100%. Recarga (F5) para conectar directo con Supabase.');
     },
   };
 
