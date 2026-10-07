@@ -11,17 +11,25 @@ import {
   pushAllLocalDataToSupabase,
 } from '../lib/supabase';
 import {
+  getAppData,
   saveAppData,
   DEFAULT_CATEGORIES,
   setActiveStorageUser,
+  migrateGuestDataToUser,
+  getDeletedItemIds,
 } from '../lib/storage';
+import { AppData, Category, Task, Note, Reminder } from '../types';
+
+export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'local';
 
 export interface UseAuthReturn {
   user: User | null;
   loading: boolean;
   isConfigured: boolean;
+  syncStatus: SyncStatus;
+  lastSyncedAt: Date | null;
   signIn: (email: string, pass: string) => Promise<void>;
-  signUp: (email: string, pass: string, fullName?: string) => Promise<void>;
+  signUp: (email: string, pass: string, fullName?: string) => Promise<{ needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (fullName: string) => Promise<User | null>;
   syncWithCloud: (force?: boolean) => Promise<{ success: boolean; message: string }>;
@@ -30,6 +38,8 @@ export interface UseAuthReturn {
 export function useAuth(onDataSynced?: () => void): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('local');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Mantener referencia estable a onDataSynced para no disparar re-renderizados ni bucles
   const onDataSyncedRef = useRef(onDataSynced);
@@ -41,11 +51,17 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
   const isSyncingRef = useRef(false);
   const lastSyncTimeRef = useRef(0);
 
-  // Sincronizar datos desde Supabase (BDD-First: la base de datos es la fuente de verdad)
+  // Sincronizar datos entre local y Supabase de forma inteligente y bidireccional
   const syncWithCloud = useCallback(
     async (force: boolean = false): Promise<{ success: boolean; message: string }> => {
       if (!supabase) {
+        setSyncStatus('local');
         return { success: false, message: 'Supabase no está configurado.' };
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSyncStatus('offline');
+        return { success: false, message: 'Sin conexión a internet.' };
       }
 
       // Si ya hay una sincronización activa, no solapar
@@ -53,52 +69,153 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
         return { success: false, message: 'Sincronización en curso.' };
       }
 
-      // Cooldown de 3 segundos para peticiones automáticas
+      // Cooldown de 2.5 segundos para peticiones automáticas
       const now = Date.now();
-      if (!force && now - lastSyncTimeRef.current < 3000) {
+      if (!force && now - lastSyncTimeRef.current < 2500) {
         return { success: true, message: 'Datos recientemente sincronizados.' };
       }
 
-      // Leer sesión de forma local sin hacer petición de red si no hay credenciales
+      // Leer sesión
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const currentUser = session?.user;
 
       if (!currentUser) {
-        return { success: false, message: 'No hay sesión activa en la nube.' };
+        setSyncStatus('local');
+        return { success: false, message: 'Modo local (sin sesión activa).' };
       }
 
       isSyncingRef.current = true;
+      setSyncStatus('syncing');
+
       try {
-        // Enrutar storage al usuario autenticado
+        // 1. Enrutar storage al usuario autenticado
         setActiveStorageUser(currentUser.id);
 
+        // 2. Si venía de crear tareas en modo invitado, migrarlas a su cuenta
+        migrateGuestDataToUser(currentUser.id);
+
+        // 3. Consultar datos en la nube
         const remote = await fetchRemoteAppData(currentUser.id);
         if (!remote) {
+          setSyncStatus('offline');
           return { success: false, message: 'No se pudieron consultar los datos de Supabase.' };
         }
 
-        // Si la cuenta es completamente nueva y no tiene categorías en Supabase, inicializar predeterminadas
-        if (!remote.categories || remote.categories.length === 0) {
-          remote.categories = DEFAULT_CATEGORIES;
-          await pushAllLocalDataToSupabase(remote, currentUser.id);
+        const local = getAppData();
+        const deletedIds = getDeletedItemIds();
+
+        // 4. FUSIÓN INTELIGENTE BIDIRECCIONAL (Sin pérdida de datos locales)
+        let hasLocalChangesToPush = false;
+
+        // A) Categorías
+        const mergedCatsMap = new Map<string, Category>();
+        (remote.categories || []).forEach((rc) => {
+          if (!deletedIds.has(rc.id)) {
+            mergedCatsMap.set(rc.id, rc);
+          }
+        });
+        (local.categories || []).forEach((lc) => {
+          if (deletedIds.has(lc.id)) return;
+          if (!mergedCatsMap.has(lc.id)) {
+            mergedCatsMap.set(lc.id, lc);
+            hasLocalChangesToPush = true;
+          }
+        });
+        DEFAULT_CATEGORIES.forEach((dc) => {
+          if (!mergedCatsMap.has(dc.id) && !deletedIds.has(dc.id)) {
+            mergedCatsMap.set(dc.id, dc);
+            hasLocalChangesToPush = true;
+          }
+        });
+        const mergedCategories = Array.from(mergedCatsMap.values());
+
+        // B) Tareas
+        const mergedTasksMap = new Map<string, Task>();
+        (remote.tasks || []).forEach((rt) => {
+          if (!deletedIds.has(rt.id)) {
+            mergedTasksMap.set(rt.id, rt);
+          }
+        });
+        (local.tasks || []).forEach((lt) => {
+          if (deletedIds.has(lt.id)) return;
+          if (!mergedTasksMap.has(lt.id)) {
+            // Tarea local creada que aún no está en la nube: preservarla y subirla
+            mergedTasksMap.set(lt.id, lt);
+            hasLocalChangesToPush = true;
+          }
+        });
+        const mergedTasks = Array.from(mergedTasksMap.values());
+
+        // C) Recordatorios
+        const mergedRemsMap = new Map<string, Reminder>();
+        (remote.reminders || []).forEach((rr) => {
+          if (!deletedIds.has(rr.id)) {
+            mergedRemsMap.set(rr.id, rr);
+          }
+        });
+        (local.reminders || []).forEach((lr) => {
+          if (deletedIds.has(lr.id)) return;
+          if (!mergedRemsMap.has(lr.id)) {
+            mergedRemsMap.set(lr.id, lr);
+            hasLocalChangesToPush = true;
+          }
+        });
+        const mergedReminders = Array.from(mergedRemsMap.values());
+
+        // D) Notas
+        const mergedNotesMap = new Map<string, Note>();
+        (remote.notes || []).forEach((rn) => {
+          if (!deletedIds.has(rn.id)) {
+            mergedNotesMap.set(rn.id, rn);
+          }
+        });
+        (local.notes || []).forEach((ln) => {
+          if (deletedIds.has(ln.id)) return;
+          if (!mergedNotesMap.has(ln.id)) {
+            mergedNotesMap.set(ln.id, ln);
+            hasLocalChangesToPush = true;
+          }
+        });
+        const mergedNotes = Array.from(mergedNotesMap.values());
+
+        const mergedData: AppData = {
+          version: 1,
+          categories: mergedCategories,
+          tasks: mergedTasks,
+          reminders: mergedReminders,
+          notes: mergedNotes,
+        };
+
+        // 5. Guardar en local storage
+        saveAppData(mergedData);
+
+        // 6. Si hay cambios locales o la nube estaba vacía o hay borrados que purgar, actualizar Supabase
+        if (
+          hasLocalChangesToPush ||
+          deletedIds.size > 0 ||
+          (remote.categories || []).length === 0 ||
+          (remote.tasks || []).length < mergedTasks.length
+        ) {
+          await pushAllLocalDataToSupabase(mergedData, currentUser.id, deletedIds);
         }
 
-        // BDD-First: Supabase es la fuente de la verdad para la cuenta activa
-        saveAppData(remote);
-
         lastSyncTimeRef.current = Date.now();
+        setLastSyncedAt(new Date());
+        setSyncStatus('synced');
+
         if (onDataSyncedRef.current) {
           onDataSyncedRef.current();
         }
 
         return {
           success: true,
-          message: `Sincronización completada: ${remote.tasks.length} tareas disponibles.`,
+          message: `Sincronización completada: ${mergedTasks.length} tareas disponibles.`,
         };
       } catch (err: any) {
         console.error('Error durante la sincronización:', err);
+        setSyncStatus('offline');
         return { success: false, message: err?.message || 'Error durante la sincronización.' };
       } finally {
         isSyncingRef.current = false;
@@ -107,24 +224,27 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     []
   );
 
-  // Escuchar cambios de sesión
+  // Escuchar cambios de sesión y cargar estado
   useEffect(() => {
     if (!supabase) {
       setLoading(false);
+      setSyncStatus('local');
       return;
     }
 
     let isMounted = true;
 
-    // Comprobar sesión actual
+    // Comprobar sesión actual al iniciar
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
         setActiveStorageUser(currentUser.id);
+        setSyncStatus('synced');
       } else {
         setActiveStorageUser(null);
+        setSyncStatus('local');
       }
       setLoading(false);
       if (currentUser) {
@@ -143,13 +263,16 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
 
       if (nextUser) {
         setActiveStorageUser(nextUser.id);
+        migrateGuestDataToUser(nextUser.id);
       } else {
         setActiveStorageUser(null);
+        setSyncStatus('local');
       }
 
       if (event === 'SIGNED_IN' && nextUser) {
         syncWithCloud(true).catch(() => {});
       } else if (event === 'SIGNED_OUT') {
+        setSyncStatus('local');
         if (onDataSyncedRef.current) {
           onDataSyncedRef.current();
         }
@@ -162,31 +285,41 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     };
   }, [syncWithCloud]);
 
-  // Auto-sincronización silenciosa al enfocar o visibilizar la pestaña y periódicamente
+  // Auto-sincronización silenciosa en foco, visibilidad, online/offline y Realtime
   useEffect(() => {
     const client = supabase;
     if (!client || !user) return;
 
     const handleSyncTrigger = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
         syncWithCloud(false).catch(() => {});
       }
     };
 
+    const handleOnline = () => {
+      syncWithCloud(true).catch(() => {});
+    };
+
+    const handleOffline = () => {
+      setSyncStatus('offline');
+    };
+
     window.addEventListener('focus', handleSyncTrigger);
     document.addEventListener('visibilitychange', handleSyncTrigger);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     // Intervalo de comprobación periódica cada 30 segundos mientras la pestaña esté activa
     const intervalTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
         syncWithCloud(false).catch(() => {});
       }
     }, 30000);
 
-    // Suscripción a canal de cambios en tiempo real en Supabase de forma segura
+    // Suscripción a canal Realtime en Supabase
     let channel: any = null;
     try {
-      const channelId = `rekayu-realtime-${user.id}-${Math.random().toString(36).substring(2, 9)}`;
+      const channelId = `rekayu-realtime-${user.id}`;
       channel = client
         .channel(channelId)
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
@@ -194,12 +327,14 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
         });
       channel.subscribe();
     } catch {
-      // Si falla la inicialización de realtime, no interrumpir la app
+      // Ignorar fallos de websocket
     }
 
     return () => {
       window.removeEventListener('focus', handleSyncTrigger);
       document.removeEventListener('visibilitychange', handleSyncTrigger);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       clearInterval(intervalTimer);
       if (channel) {
         try {
@@ -210,17 +345,36 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
   }, [user, syncWithCloud]);
 
   const signIn = async (email: string, pass: string) => {
-    await signInWithEmail(email, pass);
+    const data = await signInWithEmail(email, pass);
+    if (data?.user) {
+      setUser(data.user);
+      setActiveStorageUser(data.user.id);
+      migrateGuestDataToUser(data.user.id);
+      await syncWithCloud(true);
+    }
   };
 
-  const signUp = async (email: string, pass: string, fullName?: string) => {
-    await signUpWithEmail(email, pass, fullName);
+  const signUp = async (
+    email: string,
+    pass: string,
+    fullName?: string
+  ): Promise<{ needsConfirmation: boolean }> => {
+    const data = await signUpWithEmail(email, pass, fullName);
+    const needsConfirmation = !data.session;
+    if (data.session?.user) {
+      setUser(data.session.user);
+      setActiveStorageUser(data.session.user.id);
+      migrateGuestDataToUser(data.session.user.id);
+      await syncWithCloud(true);
+    }
+    return { needsConfirmation };
   };
 
   const signOut = async () => {
     await supabaseSignOut();
     setActiveStorageUser(null);
     setUser(null);
+    setSyncStatus('local');
     if (onDataSyncedRef.current) {
       onDataSyncedRef.current();
     }
@@ -238,6 +392,8 @@ export function useAuth(onDataSynced?: () => void): UseAuthReturn {
     user,
     loading,
     isConfigured: isSupabaseConfigured,
+    syncStatus,
+    lastSyncedAt,
     signIn,
     signUp,
     signOut,

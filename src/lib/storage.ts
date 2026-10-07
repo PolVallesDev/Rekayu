@@ -5,6 +5,7 @@ import { supabase, pushAllLocalDataToSupabase } from './supabase';
 
 const GUEST_STORAGE_KEY = 'rekayu_app_data_v1';
 const ACTIVE_USER_ID_KEY = 'rekayu_active_user_id';
+const DELETED_IDS_KEY = 'rekayu_deleted_ids_v1';
 
 let currentUserId: string | null = ((): string | null => {
   try {
@@ -34,7 +35,47 @@ export const getStorageKey = (): string => {
   return GUEST_STORAGE_KEY;
 };
 
-// Categorías por defecto del sistema
+// ==========================================
+// REGISTRO DE ELEMENTOS ELIMINADOS (TOMBSTONES)
+// ==========================================
+
+export const getDeletedItemIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+};
+
+export const markItemDeleted = (id: string): void => {
+  try {
+    const set = getDeletedItemIds();
+    set.add(id);
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+};
+
+export const clearDeletedItem = (id: string): void => {
+  try {
+    const set = getDeletedItemIds();
+    if (set.has(id)) {
+      set.delete(id);
+      localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch {}
+};
+
+export const isItemDeleted = (id: string): boolean => {
+  return getDeletedItemIds().has(id);
+};
+
+// ==========================================
+// CATEGORÍAS POR DEFECTO DEL SISTEMA
+// ==========================================
+
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-clase', name: 'Clase', color: '#7E9CB8', isDefault: true },
   { id: 'cat-examenes', name: 'Exámenes', color: '#B8707A', isDefault: true },
@@ -201,7 +242,7 @@ export const getAppData = (): AppData => {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) {
-      // Si el usuario está autenticado, no inyectamos tareas semilla para no ensuciar su cuenta
+      // Si el usuario está autenticado y no tiene datos locales, devolver estructura limpia
       if (currentUserId) {
         return {
           version: 1,
@@ -212,7 +253,7 @@ export const getAppData = (): AppData => {
         };
       }
 
-      // Si es un visitante anónimo en modo local, sí le damos la bienvenida con semillas
+      // Si es un visitante anónimo en modo local, darle bienvenida con semillas
       const initialData: AppData = {
         version: 1,
         categories: DEFAULT_CATEGORIES,
@@ -265,13 +306,94 @@ export const saveAppData = (data: AppData): void => {
   }
 };
 
+/**
+ * Migra los datos que el usuario haya creado en modo local (invitado) a su cuenta de Supabase
+ */
+export const migrateGuestDataToUser = (userId: string): AppData => {
+  try {
+    const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
+    const userKey = `rekayu_user_${userId}_v1`;
+    const userRaw = localStorage.getItem(userKey);
+
+    let userData: AppData = userRaw
+      ? JSON.parse(userRaw)
+      : {
+          version: 1,
+          categories: DEFAULT_CATEGORIES,
+          tasks: [],
+          notes: [],
+          reminders: [],
+        };
+
+    // Asegurar que las listas siempre estén inicializadas como arrays
+    userData.tasks = Array.isArray(userData.tasks) ? userData.tasks : [];
+    userData.notes = Array.isArray(userData.notes) ? userData.notes : [];
+    userData.reminders = Array.isArray(userData.reminders) ? userData.reminders : [];
+    userData.categories = Array.isArray(userData.categories) ? userData.categories : DEFAULT_CATEGORIES;
+
+    if (guestRaw) {
+      const guestData: AppData = JSON.parse(guestRaw);
+      const deletedIds = getDeletedItemIds();
+
+      // Identificadores de semillas por defecto para no arrastrar semillas idénticas
+      const seedTaskIds = new Set(['task-seed-1', 'task-seed-2', 'task-seed-3', 'task-seed-4', 'task-seed-5', 'task-seed-6', 'task-seed-7']);
+      const seedNoteIds = new Set(['note-seed-1', 'note-seed-2']);
+      const seedRemIds = new Set(['rem-seed-1', 'rem-seed-2']);
+
+      // Filtrar tareas que realmente creó el usuario en local
+      const existingTaskIds = new Set(userData.tasks.map((t) => t.id));
+      const guestTasksToMigrate = (guestData.tasks || []).filter(
+        (t) => !deletedIds.has(t.id) && !existingTaskIds.has(t.id) && (!seedTaskIds.has(t.id) || t.title.toLowerCase().includes('propuesta'))
+      );
+
+      // Notas creadas por el usuario
+      const existingNoteIds = new Set(userData.notes.map((n) => n.id));
+      const guestNotesToMigrate = (guestData.notes || []).filter(
+        (n) => !deletedIds.has(n.id) && !existingNoteIds.has(n.id) && !seedNoteIds.has(n.id)
+      );
+
+      // Recordatorios creados por el usuario
+      const existingRemIds = new Set(userData.reminders.map((r) => r.id));
+      const guestRemindersToMigrate = (guestData.reminders || []).filter(
+        (r) => !deletedIds.has(r.id) && !existingRemIds.has(r.id) && !seedRemIds.has(r.id)
+      );
+
+      // Categorías personalizadas creadas por el usuario
+      const defaultCatIds = new Set(DEFAULT_CATEGORIES.map((c) => c.id));
+      const existingCatIds = new Set(userData.categories.map((c) => c.id));
+      const guestCatsToMigrate = (guestData.categories || []).filter(
+        (c) => !deletedIds.has(c.id) && !existingCatIds.has(c.id) && !defaultCatIds.has(c.id)
+      );
+
+      if (
+        guestTasksToMigrate.length > 0 ||
+        guestNotesToMigrate.length > 0 ||
+        guestRemindersToMigrate.length > 0 ||
+        guestCatsToMigrate.length > 0
+      ) {
+        userData.tasks = [...guestTasksToMigrate, ...userData.tasks];
+        userData.notes = [...guestNotesToMigrate, ...userData.notes];
+        userData.reminders = [...guestRemindersToMigrate, ...userData.reminders];
+        userData.categories = [...userData.categories, ...guestCatsToMigrate];
+
+        localStorage.setItem(userKey, JSON.stringify(userData));
+      }
+    }
+
+    return userData;
+  } catch (err) {
+    console.error('Error al migrar datos de invitado a usuario:', err);
+    return getAppData();
+  }
+};
+
 // ==========================================
 // SINCRONIZACIÓN EN SEGUNDO PLANO CON SUPABASE
 // ==========================================
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-export const scheduleBackgroundSync = (delayMs: number = 300) => {
+export const scheduleBackgroundSync = (delayMs: number = 200) => {
   const client = supabase;
   if (!client) return;
   if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
@@ -285,7 +407,7 @@ export const scheduleBackgroundSync = (delayMs: number = 300) => {
       if (!user) return; // Modo local: cero peticiones de red
 
       const current = getAppData();
-      await pushAllLocalDataToSupabase(current, user.id);
+      await pushAllLocalDataToSupabase(current, user.id, getDeletedItemIds());
     } catch {
       // Ignorar fallos de red silenciosamente (Local-First resiliente)
     }
@@ -311,6 +433,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const deleteRemoteTask = async (id: string) => {
+  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -325,6 +448,7 @@ export const deleteRemoteTask = async (id: string) => {
 };
 
 export const deleteRemoteCategory = async (id: string) => {
+  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -339,6 +463,7 @@ export const deleteRemoteCategory = async (id: string) => {
 };
 
 export const deleteRemoteReminder = async (id: string) => {
+  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -353,6 +478,7 @@ export const deleteRemoteReminder = async (id: string) => {
 };
 
 export const deleteRemoteNote = async (id: string) => {
+  markItemDeleted(id);
   const client = supabase;
   if (!client) return;
   try {
@@ -377,7 +503,8 @@ export const saveTasks = (tasks: Task[]): void => {
   const current = getAppData();
   current.tasks = tasks;
   saveAppData(current);
-  scheduleBackgroundSync(100);
+  tasks.forEach((t) => clearDeletedItem(t.id));
+  scheduleBackgroundSync(150);
 };
 
 /**
@@ -389,7 +516,8 @@ export const batchAddTasks = (newTasks: Task[]): void => {
   const uniqueNew = newTasks.filter((t) => !existingIds.has(t.id));
   current.tasks = [...uniqueNew, ...current.tasks];
   saveAppData(current);
-  scheduleBackgroundSync(100);
+  newTasks.forEach((t) => clearDeletedItem(t.id));
+  scheduleBackgroundSync(150);
 };
 
 /**
@@ -403,7 +531,8 @@ export const saveCategories = (categories: Category[]): void => {
   const current = getAppData();
   current.categories = categories;
   saveAppData(current);
-  scheduleBackgroundSync(100);
+  categories.forEach((c) => clearDeletedItem(c.id));
+  scheduleBackgroundSync(150);
 };
 
 /**
@@ -417,7 +546,8 @@ export const saveNotes = (notes: Note[]): void => {
   const current = getAppData();
   current.notes = notes;
   saveAppData(current);
-  scheduleBackgroundSync(100);
+  notes.forEach((n) => clearDeletedItem(n.id));
+  scheduleBackgroundSync(150);
 };
 
 /**
@@ -431,7 +561,8 @@ export const saveReminders = (reminders: Reminder[]): void => {
   const current = getAppData();
   current.reminders = reminders;
   saveAppData(current);
-  scheduleBackgroundSync(100);
+  reminders.forEach((r) => clearDeletedItem(r.id));
+  scheduleBackgroundSync(150);
 };
 
 /**

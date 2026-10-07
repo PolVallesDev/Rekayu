@@ -6,10 +6,24 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  isConfigured?: boolean;
+  signIn?: (email: string, pass: string) => Promise<void>;
+  signUp?: (email: string, pass: string, fullName?: string) => Promise<{ needsConfirmation: boolean }>;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const { isConfigured, signIn, signUp } = useAuth();
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  isConfigured: propIsConfigured,
+  signIn: propSignIn,
+  signUp: propSignUp,
+}) => {
+  const authFallback = useAuth();
+  const isConfigured = propIsConfigured !== undefined ? propIsConfigured : authFallback.isConfigured;
+  const signIn = propSignIn || authFallback.signIn;
+  const signUp = propSignUp || authFallback.signUp;
+
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,6 +31,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   if (!isOpen) return null;
 
@@ -43,14 +58,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setLoading(true);
     try {
       if (isRegistering) {
-        await signUp(email.trim(), password, fullName.trim());
-        setInfoMessage(
-          'Revisa tu bandeja de entrada para verificar tu cuenta.'
-        );
-        setTimeout(() => {
+        const result = await signUp(email.trim(), password, fullName.trim());
+        if (result.needsConfirmation) {
+          setAwaitingConfirmation(true);
+        } else {
           if (onSuccess) onSuccess();
           onClose();
-        }, 3000);
+        }
       } else {
         await signIn(email.trim(), password);
         if (onSuccess) onSuccess();
@@ -62,6 +76,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         setErrorMessage('Correo o contraseña incorrectos.');
       } else if (msg.includes('User already registered')) {
         setErrorMessage('Ya existe una cuenta con este correo. Prueba a iniciar sesión.');
+      } else if (msg.includes('Email not confirmed')) {
+        setErrorMessage('Tu correo aún no está confirmado. Por favor, pulsa el enlace que recibiste en tu correo.');
       } else {
         setErrorMessage(msg);
       }
@@ -87,7 +103,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
             <div>
               <h3 className="text-[16px] font-medium text-calma-ink m-0 leading-tight">
-                {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
+                {awaitingConfirmation
+                  ? 'Confirmar cuenta'
+                  : isRegistering
+                  ? 'Crear cuenta'
+                  : 'Iniciar sesión'}
               </h3>
               <p className="text-[12px] text-calma-muted m-0 mt-0.5">
                 Sincroniza tus tareas entre tu iPhone y ordenador
@@ -108,8 +128,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <div className="p-3.5 rounded-xl bg-calma-warn/10 border border-calma-warn/30 text-calma-ink text-[13px] flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-calma-warn flex-none mt-0.5" />
             <p className="m-0 leading-relaxed text-calma-ink">
-              Falta configurar tu clave en el archivo <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px]">.env.local</code>. Revisa que <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px]">VITE_SUPABASE_ANON_KEY</code> tenga el valor correcto de tu panel de Supabase.
+              Falta configurar tu clave en el archivo{' '}
+              <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px]">.env.local</code>. Revisa que{' '}
+              <code className="bg-calma-bg px-1 py-0.5 rounded text-[12px]">VITE_SUPABASE_ANON_KEY</code>{' '}
+              tenga el valor correcto.
             </p>
+          </div>
+        ) : awaitingConfirmation ? (
+          <div className="space-y-4 py-2 text-center animate-in fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-calma-accent-soft text-calma-accent flex items-center justify-center mx-auto">
+              <Mail className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="text-[17px] font-semibold text-calma-ink m-0">
+                Revisa tu correo electrónico
+              </h4>
+              <p className="text-[13px] text-calma-muted m-0 leading-relaxed max-w-xs mx-auto">
+                Hemos enviado un enlace de confirmación a{' '}
+                <strong className="text-calma-ink font-medium">{email}</strong>.
+              </p>
+              <p className="text-[12px] text-calma-muted/80 m-0 pt-1 leading-relaxed">
+                Púlsalo en tu móvil u ordenador para verificar tu cuenta y activar la sincronización entre dispositivos.
+              </p>
+            </div>
+            <div className="pt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAwaitingConfirmation(false);
+                  setIsRegistering(false);
+                }}
+                className="w-full py-2.5 px-4 bg-calma-accent text-white font-medium text-[13.5px] rounded-xl hover:opacity-95 transition-all cursor-pointer shadow-xs"
+              >
+                Ya he confirmado mi correo · Iniciar sesión
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2 px-4 text-calma-muted hover:text-calma-ink text-[12.5px] transition-colors cursor-pointer"
+              >
+                Continuar en modo local por ahora
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,6 +263,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   setIsRegistering(!isRegistering);
                   setErrorMessage(null);
                   setInfoMessage(null);
+                  setAwaitingConfirmation(false);
                 }}
                 className="text-[12.5px] text-calma-muted hover:text-calma-ink transition-colors cursor-pointer"
               >

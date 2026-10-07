@@ -222,7 +222,17 @@ export const App: React.FC = () => {
   }, [refreshTasks, refreshCategories, refreshNotes, refreshReminders]);
 
   // Sincronización en la nube autónoma y gestión de sesión a nivel de aplicación
-  const { user, isConfigured, signOut, updateProfile } = useAuth(handleDataRestored);
+  const {
+    user,
+    isConfigured,
+    syncStatus,
+    lastSyncedAt,
+    signOut,
+    updateProfile,
+    signIn,
+    signUp,
+    syncWithCloud,
+  } = useAuth(handleDataRestored);
 
   // Navegar al inicio (Tareas -> Hoy) y cerrar paneles abiertos
   const handleGoHome = () => {
@@ -262,6 +272,7 @@ export const App: React.FC = () => {
         isPanelOpen={isPanelOpen}
         onOpenSupport={() => setIsSupportModalOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
+        syncStatus={syncStatus}
       />
 
       {/* Panel fijo lateral izquierdo de tareas fijadas (en tareas y calendario, cuando el panel de detalle no está abierto) */}
@@ -298,7 +309,9 @@ export const App: React.FC = () => {
               pendingTasksCount={counts.pendingTasks}
               pendingRemindersCount={counts.pendingReminders}
               notesCount={counts.notesCount}
+              syncStatus={syncStatus}
               onGoHome={handleGoHome}
+              onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
             />
           )}
 
@@ -420,8 +433,11 @@ export const App: React.FC = () => {
               onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
               currentUser={user}
               isConfigured={isConfigured}
+              syncStatus={syncStatus}
+              lastSyncedAt={lastSyncedAt}
               onSignOut={signOut}
               onUpdateProfile={updateProfile}
+              onSyncNow={() => syncWithCloud(true)}
             />
           )}
 
@@ -540,6 +556,9 @@ export const App: React.FC = () => {
         isOpen={isGlobalAuthModalOpen}
         onClose={() => setIsGlobalAuthModalOpen(false)}
         onSuccess={handleDataRestored}
+        isConfigured={isConfigured}
+        signIn={signIn}
+        signUp={signUp}
       />
     </div>
   );

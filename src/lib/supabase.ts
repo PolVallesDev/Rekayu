@@ -238,9 +238,23 @@ export async function fetchRemoteAppData(userId: string): Promise<AppData | null
   }
 }
 
-export async function pushAllLocalDataToSupabase(data: AppData, userId: string): Promise<void> {
+export async function pushAllLocalDataToSupabase(
+  data: AppData,
+  userId: string,
+  deletedIds?: Set<string>
+): Promise<void> {
   if (!supabase) return;
   try {
+    // Purgar en la nube elementos eliminados localmente
+    if (deletedIds && deletedIds.size > 0) {
+      const idsArray = Array.from(deletedIds);
+      await Promise.allSettled([
+        supabase.from('tasks').delete().in('id', idsArray).eq('user_id', userId),
+        supabase.from('reminders').delete().in('id', idsArray).eq('user_id', userId),
+        supabase.from('notes').delete().in('id', idsArray).eq('user_id', userId),
+        supabase.from('categories').delete().in('id', idsArray).eq('user_id', userId),
+      ]);
+    }
     // 1. Categorías primero (por claves foráneas)
     if (data.categories && data.categories.length > 0) {
       const dbCats = data.categories.map((c) => categoryToDb(c, userId));

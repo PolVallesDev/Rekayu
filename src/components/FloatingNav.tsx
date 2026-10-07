@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckSquare, Calendar, Bell, FileText, Settings, Heart, Search, User } from 'lucide-react';
 import { NavSection } from '../types';
+import { SyncStatus } from '../hooks/useAuth';
 
 interface FloatingNavProps {
   activeSection: NavSection;
@@ -8,6 +9,7 @@ interface FloatingNavProps {
   isPanelOpen: boolean;
   onOpenSupport?: () => void;
   onOpenSearch?: () => void;
+  syncStatus?: SyncStatus;
 }
 
 export const FloatingNav: React.FC<FloatingNavProps> = ({
@@ -16,6 +18,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
   isPanelOpen,
   onOpenSupport,
   onOpenSearch,
+  syncStatus = 'local',
 }) => {
   const contentItems: { id: NavSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'tareas', label: 'Tareas', icon: CheckSquare },
@@ -97,12 +100,18 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           </button>
         )}
 
-        {/* Perfil / Cuenta */}
+        {/* Perfil / Cuenta con indicador sutil de estado */}
         <button
           onClick={() => onChangeSection('cuenta')}
-          title="Mi Perfil / Cuenta"
+          title={
+            syncStatus === 'synced'
+              ? 'Mi Cuenta · Sincronizado'
+              : syncStatus === 'syncing'
+              ? 'Mi Cuenta · Sincronizando'
+              : 'Mi Perfil / Cuenta'
+          }
           aria-label="Mi Perfil / Cuenta"
-          className={`flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation ${
+          className={`relative flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation ${
             isPanelOpen
               ? 'w-10 h-10 rounded-xl'
               : 'w-9 h-9 sm:w-10 sm:h-10 rounded-full'
@@ -113,6 +122,12 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           }`}
         >
           <User className="w-5 h-5 stroke-[2.2]" />
+          {syncStatus === 'synced' && (
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          )}
+          {syncStatus === 'syncing' && (
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          )}
         </button>
 
         {/* Ajustes */}

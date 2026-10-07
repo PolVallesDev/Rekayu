@@ -12,21 +12,25 @@ import {
   ArrowRight,
   Pencil,
   Check,
+  RefreshCw,
 } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
-import { useAuth } from '../hooks/useAuth';
+import { SyncStatus } from '../hooks/useAuth';
 import { AuthModal } from './AuthModal';
 import { getAppData } from '../lib/storage';
 
-interface AccountPageProps {
+export interface AccountPageProps {
   onGoHome?: () => void;
   onDataRestored?: () => void;
   onNavigateToSettings?: () => void;
   onOpenAuth?: () => void;
   currentUser?: User | null;
   isConfigured?: boolean;
+  syncStatus?: SyncStatus;
+  lastSyncedAt?: Date | null;
   onSignOut?: () => Promise<void>;
   onUpdateProfile?: (fullName: string) => Promise<User | null>;
+  onSyncNow?: () => Promise<{ success: boolean; message: string }>;
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({
@@ -34,18 +38,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   onDataRestored,
   onNavigateToSettings,
   onOpenAuth,
-  currentUser,
-  isConfigured: propIsConfigured,
+  currentUser = null,
+  isConfigured = true,
+  syncStatus = 'local',
+  lastSyncedAt = null,
   onSignOut,
   onUpdateProfile,
+  onSyncNow,
 }) => {
-  const authFromHook = useAuth(onDataRestored);
-  const user = currentUser !== undefined ? currentUser : authFromHook.user;
-  const isConfigured = propIsConfigured !== undefined ? propIsConfigured : authFromHook.isConfigured;
-  const signOut = onSignOut || authFromHook.signOut;
-  const updateProfile = onUpdateProfile || authFromHook.updateProfile;
+  const user = currentUser;
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
@@ -86,11 +90,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
   const handleSaveName = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameInput.trim()) return;
+    if (!nameInput.trim() || !onUpdateProfile) return;
     setIsSavingName(true);
     setFeedbackMessage(null);
     try {
-      await updateProfile(nameInput.trim());
+      await onUpdateProfile(nameInput.trim());
       setIsEditing(false);
       setFeedbackMessage('Nombre actualizado correctamente.');
       setTimeout(() => setFeedbackMessage(null), 3000);
@@ -103,12 +107,26 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   };
 
   const handleSignOut = async () => {
+    if (!onSignOut) return;
     setIsSigningOut(true);
     try {
-      await signOut();
+      await onSignOut();
       if (onDataRestored) onDataRestored();
     } finally {
       setIsSigningOut(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!onSyncNow) return;
+    setIsSyncingManual(true);
+    setFeedbackMessage(null);
+    try {
+      const res = await onSyncNow();
+      setFeedbackMessage(res.message);
+      setTimeout(() => setFeedbackMessage(null), 3500);
+    } finally {
+      setIsSyncingManual(false);
     }
   };
 
@@ -137,14 +155,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           Mi Perfil
         </h1>
         <p className="text-calma-muted text-[13px] sm:text-[15px] mt-1.5 m-0">
-          Identidad y preferencias de tu cuenta
+          Identidad y estado de sincronización entre tus dispositivos
         </p>
       </div>
 
       {/* Tarjeta de perfil principal */}
       <section className="bg-calma-surface rounded-3xl p-6 sm:p-7 border border-calma-line shadow-xs">
         {user ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
               <div className="flex items-center gap-4">
                 {/* Avatar grande con iniciales */}
@@ -168,10 +186,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    {/* <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      En línea
-                    </span> */}
                   </div>
                   <p className="text-[13.5px] text-calma-muted m-0">{user.email}</p>
                   {memberSince && (
@@ -234,6 +248,47 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               </form>
             )}
 
+            {/* Barra de estado de sincronización en la nube */}
+            <div className="pt-3 border-t border-calma-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12.5px]">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    syncStatus === 'synced'
+                      ? 'bg-emerald-500'
+                      : syncStatus === 'syncing' || isSyncingManual
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-calma-muted'
+                  }`}
+                />
+                <span className="text-calma-ink font-medium">
+                  {syncStatus === 'synced'
+                    ? 'Sincronizado con Supabase'
+                    : syncStatus === 'syncing' || isSyncingManual
+                    ? 'Sincronizando con tus otros dispositivos...'
+                    : syncStatus === 'offline'
+                    ? 'Sin conexión a internet (modo local temporal)'
+                    : 'Modo local activo'}
+                </span>
+                {lastSyncedAt && syncStatus === 'synced' && (
+                  <span className="text-calma-muted text-[11.5px]">
+                    · {lastSyncedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+
+              {onSyncNow && (
+                <button
+                  type="button"
+                  onClick={handleManualSync}
+                  disabled={isSyncingManual || syncStatus === 'syncing'}
+                  className="inline-flex items-center gap-1.5 text-calma-accent hover:opacity-80 transition-opacity cursor-pointer font-medium disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingManual ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingManual ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
+                </button>
+              )}
+            </div>
+
             {feedbackMessage && (
               <p className="text-[12px] text-calma-accent font-medium m-0 animate-in fade-in">
                 {feedbackMessage}
@@ -252,11 +307,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     Modo Local
                   </h2>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-calma-bg border border-calma-line text-calma-muted">
-                    localStorage
+                    solo este dispositivo
                   </span>
                 </div>
-                <p className="text-[13.5px] text-calma-muted m-0">
-                  Tus datos se guardan únicamente en el almacenamiento local de este navegador.
+                <p className="text-[13px] text-calma-muted m-0 leading-relaxed max-w-md">
+                  Tus datos se guardan únicamente en este navegador. Para ver tus tareas en tu móvil, tablet u otro ordenador en tiempo real, inicia sesión o crea tu cuenta gratuita.
                 </p>
               </div>
             </div>
