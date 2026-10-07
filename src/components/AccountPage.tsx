@@ -250,17 +250,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
             {/* Barra de estado de sincronización en la nube */}
             <div className="pt-3 border-t border-calma-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12.5px]">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    syncStatus === 'synced'
-                      ? 'bg-emerald-500'
-                      : syncStatus === 'syncing' || isSyncingManual
-                      ? 'bg-amber-400 animate-pulse'
-                      : 'bg-calma-muted'
-                  }`}
-                />
-                <span className="text-calma-ink font-medium">
+              <div className="flex items-center gap-2 text-calma-ink">
+                {syncStatus === 'synced' ? (
+                  <CheckCircle className="w-4 h-4 text-calma-accent flex-none" />
+                ) : syncStatus === 'syncing' || isSyncingManual ? (
+                  <RefreshCw className="w-3.5 h-3.5 text-calma-accent animate-spin flex-none" />
+                ) : (
+                  <span className="w-2 h-2 rounded-full bg-calma-muted/60 flex-none" />
+                )}
+                <span className="font-medium">
                   {syncStatus === 'synced'
                     ? 'Sincronizado con Supabase'
                     : syncStatus === 'syncing' || isSyncingManual

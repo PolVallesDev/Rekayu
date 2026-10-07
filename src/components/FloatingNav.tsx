@@ -100,14 +100,14 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           </button>
         )}
 
-        {/* Perfil / Cuenta con indicador sutil de estado */}
+        {/* Perfil / Cuenta */}
         <button
           onClick={() => onChangeSection('cuenta')}
           title={
             syncStatus === 'synced'
-              ? 'Mi Cuenta · Sincronizado'
+              ? 'Mi Perfil · Sincronizado'
               : syncStatus === 'syncing'
-              ? 'Mi Cuenta · Sincronizando'
+              ? 'Mi Perfil · Sincronizando...'
               : 'Mi Perfil / Cuenta'
           }
           aria-label="Mi Perfil / Cuenta"
@@ -122,12 +122,6 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           }`}
         >
           <User className="w-5 h-5 stroke-[2.2]" />
-          {syncStatus === 'synced' && (
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          )}
-          {syncStatus === 'syncing' && (
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          )}
         </button>
 
         {/* Ajustes */}

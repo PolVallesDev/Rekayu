@@ -9,6 +9,7 @@ import {
   Pin,
 } from 'lucide-react';
 import { formatDateLongSpanish } from '../lib/dates';
+import { ConfirmModal } from './ConfirmModal';
 
 interface TaskDetailPanelProps {
   task: Task | null;
@@ -28,6 +29,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onToggleStatus,
 }) => {
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -220,13 +222,9 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               </button>
 
               <button
-                onClick={() => {
-                  if (window.confirm(`¿Eliminar la tarea "${task.title}"?`)) {
-                    onDeleteTask(task.id);
-                    onClose();
-                  }
-                }}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-warn hover:bg-calma-bg transition-colors"
+                type="button"
+                onClick={() => setShowConfirmDelete(true)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-warn hover:bg-calma-bg transition-colors cursor-pointer"
                 aria-label="Eliminar tarea"
                 title="Eliminar tarea"
               >
@@ -410,30 +408,33 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           <section className="mb-7">
             <h2 className="text-[14px] font-medium text-calma-muted mb-2.5">Enlaces</h2>
             <ul className="space-y-2 mb-2">
-              {(task.links || []).map((link) => (
-                <li
-                  key={link.id}
-                  className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-calma-bg text-calma-muted text-[14px]"
-                >
-                  <LinkIcon className="w-4 h-4 flex-none" />
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 truncate text-calma-ink hover:underline"
+              {(task.links || []).map((link) => {
+                const safeUrl = /^https?:\/\//i.test(link.url) ? link.url : '#';
+                return (
+                  <li
+                    key={link.id}
+                    className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-calma-bg text-calma-muted text-[14px]"
                   >
-                    {getDomain(link.url)}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteLink(link.id)}
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-calma-muted opacity-0 group-hover:opacity-100 hover:text-calma-ink transition-opacity"
-                    aria-label="Quitar enlace"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </li>
-              ))}
+                    <LinkIcon className="w-4 h-4 flex-none" />
+                    <a
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 truncate text-calma-ink hover:underline"
+                    >
+                      {getDomain(link.url)}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLink(link.id)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-calma-muted opacity-0 group-hover:opacity-100 hover:text-calma-ink transition-opacity cursor-pointer"
+                      aria-label="Quitar enlace"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
 
             <input
@@ -470,6 +471,21 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           </p>
         </div>
       </aside>
+
+      <ConfirmModal
+        isOpen={showConfirmDelete}
+        title="Eliminar tarea"
+        message={`¿Estás seguro de que deseas eliminar «${task.title}»? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Conservar"
+        isDanger={true}
+        onConfirm={() => {
+          onDeleteTask(task.id);
+          setShowConfirmDelete(false);
+          onClose();
+        }}
+        onClose={() => setShowConfirmDelete(false)}
+      />
     </>
   );
 };

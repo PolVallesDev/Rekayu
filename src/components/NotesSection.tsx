@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Note } from '../types';
 import { Plus, Pin, Trash2, Edit3, X } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface NotesSectionProps {
   notes: Note[];
@@ -18,6 +19,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
   onDeleteNote,
 }) => {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -85,7 +87,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
                 note={note}
                 onEdit={() => handleStartEdit(note)}
                 onTogglePin={() => onTogglePin(note.id)}
-                onDelete={() => onDeleteNote(note.id)}
+                onDelete={() => setNoteToDelete(note)}
               />
             ))}
           </div>
@@ -117,7 +119,7 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
                 note={note}
                 onEdit={() => handleStartEdit(note)}
                 onTogglePin={() => onTogglePin(note.id)}
-                onDelete={() => onDeleteNote(note.id)}
+                onDelete={() => setNoteToDelete(note)}
               />
             ))}
           </div>
@@ -193,6 +195,27 @@ export const NotesSection: React.FC<NotesSectionProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación para eliminar nota */}
+      <ConfirmModal
+        isOpen={!!noteToDelete}
+        title="Eliminar nota"
+        message={
+          noteToDelete
+            ? `¿Estás seguro de que deseas eliminar «${noteToDelete.title}»? Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmText="Eliminar"
+        cancelText="Conservar"
+        isDanger={true}
+        onConfirm={() => {
+          if (noteToDelete) {
+            onDeleteNote(noteToDelete.id);
+          }
+          setNoteToDelete(null);
+        }}
+        onClose={() => setNoteToDelete(null)}
+      />
     </div>
   );
 };
@@ -242,7 +265,7 @@ const NoteCard: React.FC<{
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1 hover:text-calma-accent transition-colors"
+          className="p-1 hover:text-calma-accent transition-colors cursor-pointer"
           title="Editar"
         >
           <Edit3 className="w-3.5 h-3.5" />
@@ -250,11 +273,9 @@ const NoteCard: React.FC<{
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(`¿Eliminar la nota "${note.title}"?`)) {
-              onDelete();
-            }
+            onDelete();
           }}
-          className="p-1 hover:text-calma-warn transition-colors"
+          className="p-1 hover:text-calma-warn transition-colors cursor-pointer"
           title="Eliminar"
         >
           <Trash2 className="w-3.5 h-3.5" />

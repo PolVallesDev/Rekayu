@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Reminder } from '../types';
 import { X, ArrowLeft, Trash2, Check, Clock, Calendar } from 'lucide-react';
 import { formatDateLongSpanish } from '../lib/dates';
+import { ConfirmModal } from './ConfirmModal';
 
 interface ReminderDetailPanelProps {
   reminder: Reminder | null;
@@ -18,6 +19,7 @@ export const ReminderDetailPanel: React.FC<ReminderDetailPanelProps> = ({
   onDeleteReminder,
   onToggleStatus,
 }) => {
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -113,13 +115,9 @@ export const ReminderDetailPanel: React.FC<ReminderDetailPanelProps> = ({
             </button>
 
             <button
-              onClick={() => {
-                if (window.confirm(`¿Eliminar el recordatorio "${reminder.title}"?`)) {
-                  onDeleteReminder(reminder.id);
-                  onClose();
-                }
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-warn hover:bg-calma-bg transition-colors"
+              type="button"
+              onClick={() => setShowConfirmDelete(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-calma-muted hover:text-calma-warn hover:bg-calma-bg transition-colors cursor-pointer"
               aria-label="Eliminar recordatorio"
               title="Eliminar recordatorio"
             >
@@ -210,6 +208,21 @@ export const ReminderDetailPanel: React.FC<ReminderDetailPanelProps> = ({
           </p>
         </div>
       </aside>
+
+      <ConfirmModal
+        isOpen={showConfirmDelete}
+        title="Eliminar recordatorio"
+        message={`¿Estás seguro de que deseas eliminar «${reminder.title}»? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Conservar"
+        isDanger={true}
+        onConfirm={() => {
+          onDeleteReminder(reminder.id);
+          setShowConfirmDelete(false);
+          onClose();
+        }}
+        onClose={() => setShowConfirmDelete(false)}
+      />
     </>
   );
 };

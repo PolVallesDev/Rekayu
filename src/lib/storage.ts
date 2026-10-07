@@ -539,6 +539,24 @@ export const saveCategories = (categories: Category[]): void => {
   scheduleBackgroundSync(0);
 };
 
+export const deleteCategoryFromStorage = (categoryId: string): void => {
+  const current = getAppData();
+  current.categories = (current.categories || []).filter((c) => c.id !== categoryId);
+  
+  // Reasignar tareas que apuntaban a esta categoría a la primera disponible
+  const fallbackCatId = current.categories[0]?.id || 'cat-personal';
+  if (current.tasks) {
+    current.tasks = current.tasks.map((t) =>
+      t.categoryId === categoryId ? { ...t, categoryId: fallbackCatId } : t
+    );
+  }
+
+  saveAppData(current);
+  markItemDeleted(categoryId);
+  deleteRemoteCategory(categoryId).catch(() => {});
+  scheduleBackgroundSync(0);
+};
+
 /**
  * Notas / Anotaciones
  */

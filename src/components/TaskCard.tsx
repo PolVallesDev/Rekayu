@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Task, Category } from '../types';
 import { Check, Link as LinkIcon, Pin, Trash2 } from 'lucide-react';
 import { formatDateFriendly } from '../lib/dates';
+import { ConfirmModal } from './ConfirmModal';
 
 interface TaskCardProps {
   task: Task;
@@ -25,6 +26,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onDelete,
   showDateBadge,
 }) => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const isDone = task.status === 'hecha';
 
   // Subtareas completadas vs totales
@@ -138,7 +140,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl select-none touch-pan-y">
+    <>
+      <div className="relative overflow-hidden rounded-2xl select-none touch-pan-y">
       {/* Fondo de acción al deslizar a la derecha: Completar */}
       {swipeOffset > 0 && (
         <div
@@ -292,11 +295,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm(`¿Eliminar la tarea "${task.title}"?`)) {
-                onDelete(task.id);
-              }
+              setShowConfirmModal(true);
             }}
-            className="p-1.5 rounded-lg transition-all flex-none hidden sm:block text-calma-muted opacity-0 sm:group-hover:opacity-100 hover:text-calma-warn hover:bg-calma-surface"
+            className="p-1.5 rounded-lg transition-all flex-none hidden sm:block text-calma-muted opacity-0 sm:group-hover:opacity-100 hover:text-calma-warn hover:bg-calma-surface cursor-pointer"
             title="Eliminar tarea"
             aria-label="Eliminar tarea"
           >
@@ -310,5 +311,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         )}
       </div>
     </div>
+
+    <ConfirmModal
+      isOpen={showConfirmModal}
+      title="Eliminar tarea"
+      message={`¿Estás seguro de que deseas eliminar «${task.title}»? Esta acción no se puede deshacer.`}
+      confirmText="Eliminar"
+      cancelText="Conservar"
+      isDanger={true}
+      onConfirm={() => {
+        if (onDelete) {
+          onDelete(task.id);
+        }
+        setShowConfirmModal(false);
+      }}
+      onClose={() => setShowConfirmModal(false)}
+    />
+  </>
   );
 };

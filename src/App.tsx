@@ -44,7 +44,7 @@ export const App: React.FC = () => {
     deleteTask,
     refreshTasks,
   } = useTasks();
-  const { categories, addCategory, refreshCategories } = useCategories();
+  const { categories, addCategory, deleteCategory, refreshCategories } = useCategories();
   const { notes, addNote, updateNote, togglePinNote, deleteNote, refreshNotes } = useNotes();
   const {
     reminders,
@@ -203,6 +203,18 @@ export const App: React.FC = () => {
     }
   };
 
+  // Manejo de eliminación de categorías
+  const handleDeleteCategory = (categoryId: string): boolean => {
+    const success = deleteCategory(categoryId);
+    if (success) {
+      refreshTasks();
+      if (selectedCategoryId === categoryId) {
+        setSelectedCategoryId(null);
+      }
+    }
+    return success;
+  };
+
   // Sincronización al restaurar copia de seguridad o refrescar desde la nube
   const handleDataRestored = useCallback(() => {
     refreshTasks();
@@ -309,9 +321,7 @@ export const App: React.FC = () => {
               pendingTasksCount={counts.pendingTasks}
               pendingRemindersCount={counts.pendingReminders}
               notesCount={counts.notesCount}
-              syncStatus={syncStatus}
               onGoHome={handleGoHome}
-              onOpenAuth={() => setIsGlobalAuthModalOpen(true)}
             />
           )}
 
@@ -448,6 +458,7 @@ export const App: React.FC = () => {
               onToggleDarkMode={toggleDarkMode}
               categories={categories}
               onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
+              onDeleteCategory={handleDeleteCategory}
               onDataRestored={handleDataRestored}
               onGoHome={handleGoHome}
             />

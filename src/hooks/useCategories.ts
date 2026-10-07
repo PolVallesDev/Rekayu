@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Category } from '../types';
-import { getCategories, saveCategories } from '../lib/storage';
+import { getCategories, saveCategories, deleteCategoryFromStorage } from '../lib/storage';
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>(() => getCategories());
@@ -20,6 +20,16 @@ export const useCategories = () => {
     return newCategory;
   }, [categories]);
 
+  // Eliminar una categoría
+  const deleteCategory = useCallback((id: string): boolean => {
+    if (categories.length <= 1) {
+      return false;
+    }
+    deleteCategoryFromStorage(id);
+    setCategories(getCategories());
+    return true;
+  }, [categories.length]);
+
   // Recargar categorías (por ejemplo tras importar JSON)
   const refreshCategories = useCallback(() => {
     setCategories(getCategories());
@@ -28,6 +38,7 @@ export const useCategories = () => {
   return {
     categories,
     addCategory,
+    deleteCategory,
     refreshCategories,
   };
 };

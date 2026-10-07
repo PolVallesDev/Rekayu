@@ -1,7 +1,6 @@
 import React from 'react';
 import { ViewType, NavSection } from '../types';
 import { getTodayFormattedLong } from '../lib/dates';
-import { SyncStatus } from '../hooks/useAuth';
 
 interface HeaderProps {
   activeSection: NavSection;
@@ -9,9 +8,7 @@ interface HeaderProps {
   pendingTasksCount: number;
   pendingRemindersCount: number;
   notesCount: number;
-  syncStatus?: SyncStatus;
   onGoHome?: () => void;
-  onOpenAuth?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,9 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   pendingTasksCount,
   pendingRemindersCount,
   notesCount,
-  syncStatus = 'local',
   onGoHome,
-  onOpenAuth,
 }) => {
   const todayFormatted = getTodayFormattedLong();
 
@@ -54,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="mb-3 select-none">
-      {/* 1. Fila superior: Marca Rekayu + Fecha + Estado de Sincronización */}
+      {/* 1. Fila superior: Marca Rekayu + Fecha */}
       <div className="mb-1 sm:mb-2 flex items-center justify-between text-calma-muted text-[13px] sm:text-[14px] tracking-wide font-medium">
         <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
           <button
@@ -69,45 +64,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="text-calma-muted/40 font-light">·</span>
           <span className="capitalize overflow-hidden text-ellipsis">{todayFormatted}</span>
         </div>
-
-        {/* Indicador sereno de sincronización o modo local */}
-        <div className="flex-none pl-2">
-          {syncStatus === 'synced' ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-[11px] text-calma-muted/80"
-              title="Sincronizado con la nube"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="hidden sm:inline">Sincronizado</span>
-            </span>
-          ) : syncStatus === 'syncing' ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-[11px] text-calma-muted"
-              title="Sincronizando con tus otros dispositivos..."
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="hidden sm:inline">Sincronizando...</span>
-            </span>
-          ) : syncStatus === 'offline' ? (
-            <span
-              className="inline-flex items-center gap-1.5 text-[11px] text-calma-muted/70"
-              title="Sin conexión a internet (modo local temporal)"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-calma-muted" />
-              <span className="hidden sm:inline">Sin conexión</span>
-            </span>
-          ) : onOpenAuth ? (
-            <button
-              type="button"
-              onClick={onOpenAuth}
-              className="inline-flex items-center gap-1.5 text-[11px] text-calma-muted hover:text-calma-accent transition-colors cursor-pointer"
-              title="Modo local (solo este dispositivo). Pulsa aquí para iniciar sesión y sincronizar."
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-calma-muted/60" />
-              <span>Modo local</span>
-            </button>
-          ) : null}
-        </div>
       </div>
 
       {/* 2. Título Serif + Subtítulo limpio y despejado */}
@@ -119,23 +75,6 @@ export const Header: React.FC<HeaderProps> = ({
           {summary}
         </p>
       </div>
-
-      {/* Aviso sereno si el dispositivo está en Modo local */}
-      {syncStatus === 'local' && onOpenAuth && (
-        <div className="mt-3 px-3.5 py-2 rounded-2xl bg-calma-surface border border-calma-line shadow-xs flex items-center justify-between gap-3 text-[12.5px] animate-in fade-in">
-          <div className="flex items-center gap-2 text-calma-muted truncate">
-            <span className="w-2 h-2 rounded-full bg-amber-400 flex-none" />
-            <span className="truncate">Modo local · Inicia sesión para ver y sincronizar tus tareas del móvil</span>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenAuth}
-            className="px-3 py-1 rounded-xl bg-calma-accent text-white font-medium text-[12px] hover:opacity-90 transition-opacity cursor-pointer flex-none shadow-xs"
-          >
-            Conectar
-          </button>
-        </div>
-      )}
     </header>
   );
 };

@@ -13,6 +13,7 @@ import {
   Info,
   Heart,
   Coffee,
+  Trash2,
 } from 'lucide-react';
 import { Category } from '../types';
 import {
@@ -22,12 +23,14 @@ import {
   saveSupportConfig,
   SupportConfig,
 } from '../lib/storage';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SettingsPageProps {
   isDark: boolean;
   onToggleDarkMode: () => void;
   categories: Category[];
   onOpenCategoryModal: () => void;
+  onDeleteCategory?: (categoryId: string) => boolean;
   onDataRestored: () => void;
   onGoHome?: () => void;
 }
@@ -37,6 +40,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onToggleDarkMode,
   categories,
   onOpenCategoryModal,
+  onDeleteCategory,
   onDataRestored,
   onGoHome,
 }) => {
@@ -46,6 +50,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [loading, setLoading] = useState(false);
   const [supportConfig, setSupportConfig] = useState<SupportConfig>(getSupportConfig);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const handleToggleBuyCoffee = () => {
     const nextVal = !supportConfig.enableBuyCoffee;
@@ -187,18 +192,32 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-calma-bg border border-calma-line text-[13px] text-calma-ink"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-none"
-                style={{ backgroundColor: cat.color }}
-              />
-              <span className="font-medium">{cat.name}</span>
-            </div>
-          ))}
+          {categories.map((cat) => {
+            const canDelete = categories.length > 1;
+            return (
+              <div
+                key={cat.id}
+                className="group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-calma-bg border border-calma-line text-[13px] text-calma-ink"
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-none"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="font-medium">{cat.name}</span>
+                {canDelete && onDeleteCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setCategoryToDelete(cat)}
+                    className="p-1 rounded-md text-calma-muted/60 hover:text-calma-warn hover:bg-calma-warn/10 transition-colors ml-0.5 cursor-pointer"
+                    title={`Eliminar categoría ${cat.name}`}
+                    aria-label={`Eliminar categoría ${cat.name}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -296,7 +315,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <Info className="w-4 h-4 text-calma-muted mt-0.5 flex-none" />
           <div className="space-y-1">
             <h3 className="text-[13.5px] font-medium text-calma-ink m-0">
-              Rekayu · Versión Beta v3
+              Rekayu · Versión 1.0
             </h3>
             <p className="text-[12px] text-calma-muted leading-relaxed m-0">
               Diseñado con estética Calma para el perfil híbrido de estudiante universitario y emprendedor. Toda la persistencia pasa por <code className="text-calma-ink">src/lib/storage.ts</code>, sincronizada en la nube con Supabase.
@@ -304,6 +323,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Modal de confirmación para eliminar categoría */}
+      <ConfirmModal
+        isOpen={!!categoryToDelete}
+        title="Eliminar categoría"
+        message={
+          categoryToDelete
+            ? `¿Estás seguro de que deseas eliminar «${categoryToDelete.name}»? Las tareas que la tengan pasarán a la categoría «${
+                categories.find((c) => c.id !== categoryToDelete.id)?.name || 'General'
+              }».`
+            : undefined
+        }
+        confirmText="Eliminar categoría"
+        cancelText="Conservar"
+        isDanger={true}
+        onConfirm={() => {
+          if (categoryToDelete && onDeleteCategory) {
+            onDeleteCategory(categoryToDelete.id);
+            setFeedback({
+              type: 'success',
+              message: `Categoría «${categoryToDelete.name}» eliminada correctamente.`,
+            });
+          }
+          setCategoryToDelete(null);
+        }}
+        onClose={() => setCategoryToDelete(null)}
+      />
     </div>
   );
 };
